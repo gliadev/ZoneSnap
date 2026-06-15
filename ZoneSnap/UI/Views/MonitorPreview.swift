@@ -7,15 +7,21 @@
 
 import SwiftUI
 
-/// Dibuja el área del monitor a escala con sus zonas numeradas y seleccionables.
-/// La lógica vive en `EditorViewModel`; esta vista solo presenta y propaga la
-/// selección.
+/// Dibuja el área del monitor a escala con sus zonas (numeradas y seleccionables)
+/// y las líneas divisorias arrastrables. La lógica vive en `EditorViewModel`;
+/// esta vista solo presenta y propaga la interacción.
 struct MonitorPreview: View {
+    /// Nombre del espacio de coordenadas para mapear los arrastres de líneas.
+    static let coordinateSpace = "monitorPreview"
+
     let bounds: CGRect
     let zones: [Zone]
+    var lines: [GridLine] = []
     var selectedZoneIDs: Set<Zone.ID> = []
     /// Callback al pulsar una zona: `(zoneID, extending)`. `nil` = no interactivo.
     var onSelectZone: ((Zone.ID, _ extending: Bool) -> Void)? = nil
+    /// Callback al arrastrar una línea: `(lineID, nuevaPosición)`. `nil` = sin arrastre.
+    var onMoveLine: ((GridLine.ID, CGFloat) -> Void)? = nil
 
     var body: some View {
         GeometryReader { proxy in
@@ -40,7 +46,21 @@ struct MonitorPreview: View {
                         y: (zone.rect.minY - bounds.minY) * scaleY
                     )
                 }
+
+                if let onMoveLine {
+                    ForEach(lines) { line in
+                        LineHandle(
+                            line: line,
+                            bounds: bounds,
+                            scaleX: scaleX,
+                            scaleY: scaleY,
+                            size: proxy.size,
+                            onMove: { onMoveLine(line.id, $0) }
+                        )
+                    }
+                }
             }
+            .coordinateSpace(.named(Self.coordinateSpace))
         }
         .aspectRatio(bounds.width / bounds.height, contentMode: .fit)
         .clipShape(.rect(cornerRadius: 10))
@@ -48,13 +68,22 @@ struct MonitorPreview: View {
     }
 }
 
-#Preview("2x2 con selección") {
+#Preview("3x2 con selección") {
     let bounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-    let zones = ZoneCalculator.zones(in: bounds, lines: [
-        GridLine(orientation: .vertical, position: 960),
+    let lines = [
+        GridLine(orientation: .vertical, position: 640),
+        GridLine(orientation: .vertical, position: 1280),
         GridLine(orientation: .horizontal, position: 540)
-    ])
-    return MonitorPreview(bounds: bounds, zones: zones, selectedZoneIDs: [zones[3].id])
-        .padding()
-        .frame(width: 480, height: 300)
+    ]
+    let zones = ZoneCalculator.zones(in: bounds, lines: lines)
+    return MonitorPreview(
+        bounds: bounds,
+        zones: zones,
+        lines: lines,
+        selectedZoneIDs: [zones[4].id, zones[5].id],
+        onSelectZone: { _, _ in },
+        onMoveLine: { _, _ in }
+    )
+    .padding()
+    .frame(width: 520, height: 320)
 }

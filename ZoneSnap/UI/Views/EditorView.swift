@@ -7,9 +7,10 @@
 
 import SwiftUI
 
-/// Editor visual de zonas: elige monitor, configura la rejilla, selecciona
-/// zonas y mueve la ventana activa sobre ellas. El estado de app (monitores +
-/// persistencia) llega en `app`; el de edición vive en un `EditorViewModel`.
+/// Editor visual de zonas: elige monitor, configura la rejilla (arrastrando las
+/// líneas para redimensionar), selecciona zonas y mueve la ventana activa sobre
+/// ellas. El estado de app (monitores + persistencia) llega en `app`; el de
+/// edición vive en un `EditorViewModel`.
 struct EditorView: View {
     let app: AppModel
     let snapper: WindowSnapper
@@ -37,12 +38,18 @@ struct EditorView: View {
             MonitorPreview(
                 bounds: editor.bounds,
                 zones: editor.previewZones,
+                lines: editor.lines,
                 selectedZoneIDs: editor.selectedZoneIDs,
-                onSelectZone: { id, extending in editor.selectZone(id, extending: extending) }
+                onSelectZone: { id, extending in editor.selectZone(id, extending: extending) },
+                onMoveLine: { id, position in editor.moveLine(id, to: position) }
             )
             .frame(maxWidth: .infinity)
 
             EditorControls(model: editor)
+
+            Text("Arrastra las líneas blancas para redimensionar · click para seleccionar (Shift = varias)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
 
             HStack {
                 Button("Mover ventana activa aquí", systemImage: "macwindow.on.rectangle", action: moveWindow)
@@ -63,7 +70,7 @@ struct EditorView: View {
             }
         }
         .padding()
-        .frame(minWidth: 560, minHeight: 520)
+        .frame(minWidth: 560, minHeight: 540)
         .navigationTitle("Editor de zonas")
         .task {
             await app.start()

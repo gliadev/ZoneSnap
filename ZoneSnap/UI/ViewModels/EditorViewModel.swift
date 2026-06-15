@@ -99,6 +99,30 @@ extension EditorViewModel {
     }
 }
 
+// MARK: - Edición libre de líneas
+
+extension EditorViewModel {
+    /// Separación de "snap" al arrastrar líneas (puntos del monitor).
+    static let lineSnapStep: CGFloat = 8
+
+    /// Margen mínimo de una línea respecto al borde, para no crear zonas
+    /// degeneradas.
+    static let lineMinMargin: CGFloat = 24
+
+    /// Reposiciona una línea (al arrastrarla). La posición se ajusta al step de
+    /// snap y se mantiene dentro del área con un margen mínimo. No-op si el id
+    /// no existe.
+    func moveLine(_ id: GridLine.ID, to position: CGFloat) {
+        guard let index = lines.firstIndex(where: { $0.id == id }) else { return }
+        let isVertical = lines[index].orientation == .vertical
+        let lower = (isVertical ? bounds.minX : bounds.minY) + Self.lineMinMargin
+        let upper = (isVertical ? bounds.maxX : bounds.maxY) - Self.lineMinMargin
+        let snapped = (position / Self.lineSnapStep).rounded() * Self.lineSnapStep
+        lines[index].position = min(max(snapped, lower), upper)
+        recompute()
+    }
+}
+
 // MARK: - Carga desde zonas persistidas
 
 extension EditorViewModel {
