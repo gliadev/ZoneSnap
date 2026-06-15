@@ -22,6 +22,9 @@ final class EditorViewModel {
     private(set) var lines: [GridLine] = []
     private(set) var previewZones: [Zone] = []
 
+    /// Zonas seleccionadas (para resaltar y para colocar una ventana sobre ellas).
+    private(set) var selectedZoneIDs: Set<Zone.ID> = []
+
     init(bounds: CGRect) {
         self.bounds = bounds
         recompute()
@@ -53,6 +56,8 @@ final class EditorViewModel {
 
     private func recompute() {
         previewZones = ZoneCalculator.zones(in: bounds, lines: lines)
+        // Las zonas cambiaron: sus ids previos ya no son válidos.
+        selectedZoneIDs.removeAll()
     }
 }
 
@@ -113,5 +118,39 @@ extension EditorViewModel {
         lines = internalXs.sorted().map { GridLine(orientation: .vertical, position: $0) }
             + internalYs.sorted().map { GridLine(orientation: .horizontal, position: $0) }
         recompute()
+    }
+}
+
+// MARK: - Selección de zonas
+
+extension EditorViewModel {
+    /// Zonas seleccionadas, en el orden de la preview.
+    var selectedZones: [Zone] {
+        previewZones.filter { selectedZoneIDs.contains($0.id) }
+    }
+
+    /// Rectángulo que engloba la selección (espacio local del monitor), o `nil`
+    /// si no hay nada seleccionado.
+    var selectionRect: CGRect? {
+        WindowFrameCalculator.boundingRect(of: selectedZones)
+    }
+
+    /// Selecciona una zona. Con `extending` (Shift) alterna su pertenencia a la
+    /// selección; sin `extending` deja solo esa zona (o limpia si ya era la única).
+    func selectZone(_ id: Zone.ID, extending: Bool) {
+        if extending {
+            if selectedZoneIDs.contains(id) {
+                selectedZoneIDs.remove(id)
+            } else {
+                selectedZoneIDs.insert(id)
+            }
+        } else {
+            selectedZoneIDs = (selectedZoneIDs == [id]) ? [] : [id]
+        }
+    }
+
+    /// Limpia la selección.
+    func clearSelection() {
+        selectedZoneIDs.removeAll()
     }
 }

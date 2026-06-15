@@ -13,10 +13,14 @@ struct ZoneSnapApp: App {
         repository: LocalZoneConfigRepository(),
         monitorProvider: NSScreenMonitorProvider()
     )
+    @State private var snapper = WindowSnapper(
+        mover: AXWindowMover(),
+        authorizer: SystemAccessibilityAuthorizer()
+    )
 
     var body: some Scene {
         Window("ZoneSnap — Editor", id: ZoneSnapWindow.editor) {
-            EditorView(app: app)
+            EditorView(app: app, snapper: snapper)
         }
         .windowResizability(.contentMinSize)
 
