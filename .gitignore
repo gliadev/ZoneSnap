@@ -1,0 +1,23 @@
+# macOS
+.DS_Store
+
+# Xcode — estado específico de usuario
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# Xcode — build
+DerivedData/
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Temporales del proyecto
+.tmp/
