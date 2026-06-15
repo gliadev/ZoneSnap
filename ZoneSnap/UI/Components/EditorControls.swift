@@ -2,7 +2,7 @@
 //  EditorControls.swift
 //  ZoneSnap
 //
-//  UI — controles del editor (columnas, filas, limpiar).
+//  UI — controles del editor (columnas, filas, fusionar/separar, limpiar).
 //
 
 import SwiftUI
@@ -13,7 +13,7 @@ struct EditorControls: View {
     let model: EditorViewModel
 
     var body: some View {
-        HStack(spacing: 24) {
+        HStack(spacing: 20) {
             Stepper(
                 "Columnas: \(model.columnCount)",
                 value: Binding(get: { model.columnCount }, set: { model.setColumns($0) }),
@@ -28,10 +28,14 @@ struct EditorControls: View {
 
             Spacer()
 
-            Button("Limpiar", systemImage: "trash", role: .destructive) {
-                model.clear()
-            }
-            .disabled(model.lines.isEmpty)
+            Button("Fusionar", systemImage: "rectangle.on.rectangle") { model.mergeSelection() }
+                .disabled(!model.canMerge)
+
+            Button("Separar", systemImage: "rectangle.split.2x1") { model.unmergeSelection() }
+                .disabled(!model.canUnmerge)
+
+            Button("Limpiar", systemImage: "trash", role: .destructive) { model.clear() }
+                .disabled(model.lines.isEmpty && model.merges.isEmpty)
         }
         .fixedSize(horizontal: false, vertical: true)
     }
@@ -40,5 +44,5 @@ struct EditorControls: View {
 #Preview {
     EditorControls(model: EditorViewModel(bounds: CGRect(x: 0, y: 0, width: 1920, height: 1080)))
         .padding()
-        .frame(width: 520)
+        .frame(width: 640)
 }
