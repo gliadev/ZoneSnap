@@ -15,6 +15,7 @@ import SwiftUI
 struct EditorView: View {
     let app: AppModel
     let snapper: WindowSnapper
+    let dragOverlay: DragOverlayController
     @State private var editor = EditorViewModel(bounds: CGRect(x: 0, y: 0, width: 1920, height: 1080))
 
     @State private var profileName = ""
@@ -51,7 +52,7 @@ struct EditorView: View {
 
             EditorControls(model: editor)
 
-            Text("Arrastra las líneas para redimensionar (fuera del borde para borrarlas) · click para seleccionar (Shift = varias)")
+            Text("Arrastra las líneas para redimensionar (fuera del borde para borrarlas) · click para seleccionar (Shift = varias) · ⇧⌃ + arrastrar ventana para acoplar")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -80,6 +81,7 @@ struct EditorView: View {
         .task {
             await app.start()
             snapper.startObservingActiveApp()
+            dragOverlay.start()
             configureEditor(for: app.selectedMonitorID)
         }
         .onChange(of: app.selectedMonitorID) { oldID, newID in
@@ -89,7 +91,6 @@ struct EditorView: View {
             configureEditor(for: newID)
         }
         .onChange(of: editor.lines) { _, _ in
-            // Auto-guardado del layout del monitor actual (debounced).
             if let monitor = app.selectedMonitor {
                 app.scheduleAutosave(zones: editor.previewZones, for: monitor)
             }
@@ -156,5 +157,5 @@ struct EditorView: View {
 }
 
 #Preview {
-    EditorView(app: .preview, snapper: .preview)
+    EditorView(app: .preview, snapper: .preview, dragOverlay: .preview)
 }
