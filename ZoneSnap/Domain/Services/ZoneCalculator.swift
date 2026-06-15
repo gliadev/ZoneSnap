@@ -60,6 +60,37 @@ enum ZoneCalculator {
         return zones.sorted { ($0.rect.minY, $0.rect.minX) < ($1.rect.minY, $1.rect.minX) }
     }
 
+    /// Segmentos a lo largo de una línea donde realmente separa dos zonas
+    /// distintas (con fusiones, una línea puede no ser frontera en algún tramo).
+    /// Para verticales devuelve rangos en `y`; para horizontales, en `x`.
+    static func lineSegments(
+        for line: GridLine,
+        in bounds: CGRect,
+        lines: [GridLine],
+        merges: [[GridCell]]
+    ) -> [ClosedRange<CGFloat>] {
+        let (xs, ys) = edges(in: bounds, lines: lines)
+        let zoneOf = zoneResolver(merges: merges)
+
+        switch line.orientation {
+        case .vertical:
+            guard let edge = xs.firstIndex(of: line.position), edge > 0, edge < xs.count - 1 else { return [] }
+            let bands = (0..<(ys.count - 1)).compactMap { row -> (CGFloat, CGFloat)? in
+                zoneOf(GridCell(row: row, col: edge - 1)) != zoneOf(GridCell(row: row, col: edge))
+                    ? (ys[row], ys[row + 1]) : nil
+            }
+            return mergeContiguous(bands)
+
+        case .horizontal:
+            guard let edge = ys.firstIndex(of: line.position), edge > 0, edge < ys.count - 1 else { return [] }
+            let bands = (0..<(xs.count - 1)).compactMap { col -> (CGFloat, CGFloat)? in
+                zoneOf(GridCell(row: edge - 1, col: col)) != zoneOf(GridCell(row: edge, col: col))
+                    ? (xs[col], xs[col + 1]) : nil
+            }
+            return mergeContiguous(bands)
+        }
+    }
+
     /// UUID determinista derivado de la celda (su posición fila/columna).
     static func zoneID(for cell: GridCell) -> UUID {
         let index = cell.row * 100_000 + cell.col
@@ -78,6 +109,33 @@ enum ZoneCalculator {
             .filter { $0.orientation == .horizontal && $0.position > bounds.minY && $0.position < bounds.maxY }
             .map(\.position)
         return (([bounds.minX, bounds.maxX] + verticals).sorted(), ([bounds.minY, bounds.maxY] + horizontals).sorted())
+    }
+
+    /// Resuelve la zona (id) a la que pertenece una celda, según las fusiones.
+    private static func zoneResolver(merges: [[GridCell]]) -> (GridCell) -> UUID {
+        var map: [GridCell: UUID] = [:]
+        for group in merges.map(Set.init).filter({ !$0.isEmpty }) {
+            guard let anchor = group.min(by: cellPrecedes) else { continue }
+            let id = zoneID(for: anchor)
+            for cell in group { map[cell] = id }
+        }
+        return { map[$0] ?? zoneID(for: $0) }
+    }
+
+    /// Une bandas contiguas (que se tocan) en rangos.
+    private static func mergeContiguous(_ bands: [(CGFloat, CGFloat)]) -> [ClosedRange<CGFloat>] {
+        guard var current = bands.first else { return [] }
+        var result: [ClosedRange<CGFloat>] = []
+        for band in bands.dropFirst() {
+            if band.0 == current.1 {
+                current.1 = band.1
+            } else {
+                result.append(current.0...current.1)
+                current = band
+            }
+        }
+        result.append(current.0...current.1)
+        return result
     }
 
     private static func cellPrecedes(_ a: GridCell, _ b: GridCell) -> Bool {

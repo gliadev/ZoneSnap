@@ -8,8 +8,8 @@
 import SwiftUI
 
 /// Dibuja el área del monitor a escala con sus zonas (numeradas y seleccionables)
-/// y las líneas divisorias arrastrables. La lógica vive en `EditorViewModel`;
-/// esta vista solo presenta y propaga la interacción.
+/// y las líneas divisorias arrastrables, **solo por los segmentos** donde separan
+/// zonas distintas. La lógica vive en `EditorViewModel`.
 struct MonitorPreview: View {
     /// Nombre del espacio de coordenadas para mapear los arrastres de líneas.
     static let coordinateSpace = "monitorPreview"
@@ -17,12 +17,10 @@ struct MonitorPreview: View {
     let bounds: CGRect
     let zones: [Zone]
     var lines: [GridLine] = []
+    var merges: [[GridCell]] = []
     var selectedZoneIDs: Set<Zone.ID> = []
-    /// Callback al pulsar una zona: `(zoneID, extending)`. `nil` = no interactivo.
     var onSelectZone: ((Zone.ID, _ extending: Bool) -> Void)? = nil
-    /// Callback al arrastrar una línea: `(lineID, nuevaPosición)`. `nil` = sin arrastre.
     var onMoveLine: ((GridLine.ID, CGFloat) -> Void)? = nil
-    /// Callback al soltar una línea fuera del borde (borrarla).
     var onRemoveLine: ((GridLine.ID) -> Void)? = nil
 
     var body: some View {
@@ -51,15 +49,18 @@ struct MonitorPreview: View {
 
                 if let onMoveLine {
                     ForEach(lines) { line in
-                        LineHandle(
-                            line: line,
-                            bounds: bounds,
-                            scaleX: scaleX,
-                            scaleY: scaleY,
-                            size: proxy.size,
-                            onMove: { onMoveLine(line.id, $0) },
-                            onRemove: { onRemoveLine?(line.id) }
-                        )
+                        let segments = ZoneCalculator.lineSegments(for: line, in: bounds, lines: lines, merges: merges)
+                        ForEach(segments.indices, id: \.self) { index in
+                            LineHandle(
+                                line: line,
+                                segment: segments[index],
+                                bounds: bounds,
+                                scaleX: scaleX,
+                                scaleY: scaleY,
+                                onMove: { onMoveLine(line.id, $0) },
+                                onRemove: { onRemoveLine?(line.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -71,19 +72,20 @@ struct MonitorPreview: View {
     }
 }
 
-#Preview("3x2 con selección") {
-    let bounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+#Preview("fusión 1+2 sin línea cruzándola") {
+    let bounds = CGRect(x: 0, y: 0, width: 900, height: 800)
     let lines = [
-        GridLine(orientation: .vertical, position: 640),
-        GridLine(orientation: .vertical, position: 1280),
-        GridLine(orientation: .horizontal, position: 540)
+        GridLine(orientation: .vertical, position: 300),
+        GridLine(orientation: .vertical, position: 600),
+        GridLine(orientation: .horizontal, position: 400)
     ]
-    let zones = ZoneCalculator.zones(in: bounds, lines: lines)
+    let merges = [[GridCell(row: 0, col: 0), GridCell(row: 0, col: 1)]]
+    let zones = ZoneCalculator.zones(in: bounds, lines: lines, merges: merges)
     return MonitorPreview(
         bounds: bounds,
         zones: zones,
         lines: lines,
-        selectedZoneIDs: [zones[4].id, zones[5].id],
+        merges: merges,
         onSelectZone: { _, _ in },
         onMoveLine: { _, _ in },
         onRemoveLine: { _ in }

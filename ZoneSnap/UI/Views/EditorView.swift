@@ -42,6 +42,7 @@ struct EditorView: View {
                 bounds: editor.bounds,
                 zones: editor.previewZones,
                 lines: editor.lines,
+                merges: editor.merges,
                 selectedZoneIDs: editor.selectedZoneIDs,
                 onSelectZone: { id, extending in editor.selectZone(id, extending: extending) },
                 onMoveLine: { id, position in editor.moveLine(id, to: position) },
