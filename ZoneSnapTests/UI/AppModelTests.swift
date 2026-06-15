@@ -57,6 +57,20 @@ struct AppModelTests {
         #expect(app2.savedZones(for: mon.id).count == 1)
     }
 
+    @Test("setLayout actualiza en memoria sin persistir a disco")
+    func setLayoutInMemoryOnly() async throws {
+        let repo = InMemoryZoneConfigRepository()
+        let mon = monitor("A", 1920, 1080)
+        let app1 = makeApp(monitors: [mon], repository: repo)
+        app1.setLayout(zones: [Zone(rect: CGRect(x: 0, y: 0, width: 100, height: 100))], for: mon)
+
+        #expect(app1.savedZones(for: mon.id).count == 1) // en memoria sí
+
+        let app2 = makeApp(monitors: [mon], repository: repo)
+        try await app2.loadConfig()
+        #expect(app2.savedZones(for: mon.id).isEmpty) // en disco no
+    }
+
     @Test("guardar sobre un monitor existente reemplaza (no duplica)")
     func saveUpserts() async throws {
         let mon = monitor("A", 1920, 1080)

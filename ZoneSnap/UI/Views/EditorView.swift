@@ -77,7 +77,11 @@ struct EditorView: View {
             snapper.startObservingActiveApp()
             configureEditor(for: app.selectedMonitorID)
         }
-        .onChange(of: app.selectedMonitorID) { _, newID in
+        .onChange(of: app.selectedMonitorID) { oldID, newID in
+            // Retiene en memoria el layout del monitor que dejamos, para no perderlo.
+            if let oldMonitor = app.monitors.first(where: { $0.id == oldID }) {
+                app.setLayout(zones: editor.previewZones, for: oldMonitor)
+            }
             configureEditor(for: newID)
         }
     }

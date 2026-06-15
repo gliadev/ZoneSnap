@@ -56,8 +56,9 @@ final class AppModel {
         config.monitors.first { $0.monitor.id == monitorID }?.layout.grid.zones ?? []
     }
 
-    /// Guarda (upsert) las zonas del monitor dado y persiste la configuración.
-    func save(zones: [Zone], for monitor: Monitor, layoutName: String = "Personalizado") async throws {
+    /// Actualiza (upsert) el layout de un monitor **solo en memoria**. Se usa al
+    /// cambiar de monitor para no perder la edición en curso.
+    func setLayout(zones: [Zone], for monitor: Monitor, layoutName: String = "Personalizado") {
         let pairing = MonitorLayout(
             monitor: monitor,
             layout: Layout(name: layoutName, grid: ZoneGrid(zones: zones))
@@ -67,7 +68,17 @@ final class AppModel {
         } else {
             config.monitors.append(pairing)
         }
+    }
+
+    /// Persiste la configuración actual a disco.
+    func persist() async throws {
         try await repository.save(config)
+    }
+
+    /// Guarda (upsert) las zonas del monitor dado y persiste a disco.
+    func save(zones: [Zone], for monitor: Monitor, layoutName: String = "Personalizado") async throws {
+        setLayout(zones: zones, for: monitor, layoutName: layoutName)
+        try await persist()
     }
 }
 
