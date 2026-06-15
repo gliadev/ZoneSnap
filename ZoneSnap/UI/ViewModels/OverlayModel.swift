@@ -15,25 +15,38 @@ import Observation
 @MainActor
 @Observable
 final class OverlayModel {
+    /// Distancia al borde (puntos) para considerar que el cursor "toca" una
+    /// línea divisoria y resaltar las zonas de ambos lados (span).
+    static let spanThreshold: CGFloat = 35
+
     /// Área del monitor cubierta por el overlay.
     var bounds: CGRect = .zero
 
     /// Zonas a iluminar.
     var zones: [Zone] = []
 
-    /// Zona resaltada (la que hay bajo el cursor), si alguna.
-    var highlightedZoneID: Zone.ID?
-
-    /// Actualiza la zona resaltada según un punto en coordenadas locales del
-    /// monitor (la que contiene el cursor).
-    func highlightZone(at point: CGPoint) {
-        highlightedZoneID = ZoneGrid(zones: zones).zone(at: point)?.id
-    }
+    /// Zonas resaltadas (1 = una zona; 2+ = span al estar sobre una divisoria).
+    var highlightedZoneIDs: Set<Zone.ID> = []
 
     /// Configura el overlay para un monitor y sus zonas, sin resaltado.
     func configure(bounds: CGRect, zones: [Zone]) {
         self.bounds = bounds
         self.zones = zones
-        highlightedZoneID = nil
+        highlightedZoneIDs = []
+    }
+
+    /// Resalta la(s) zona(s) bajo el punto: la que lo contiene y, si está cerca
+    /// de una línea divisoria, también las zonas adyacentes (span).
+    func highlightZones(at point: CGPoint, threshold: CGFloat = OverlayModel.spanThreshold) {
+        highlightedZoneIDs = Set(
+            zones
+                .filter { $0.rect.insetBy(dx: -threshold, dy: -threshold).contains(point) }
+                .map(\.id)
+        )
+    }
+
+    /// Rectángulo destino del span: bounding box de las zonas resaltadas, o `nil`.
+    var highlightedRect: CGRect? {
+        WindowFrameCalculator.boundingRect(of: zones.filter { highlightedZoneIDs.contains($0.id) })
     }
 }

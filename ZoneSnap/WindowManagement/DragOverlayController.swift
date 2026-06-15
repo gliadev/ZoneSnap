@@ -10,7 +10,8 @@ import CoreGraphics
 import SwiftUI
 
 /// Muestra el overlay de zonas mientras se arrastra una ventana manteniendo
-/// **⇧⌃ (Shift+Control)**, y al soltar acopla la ventana a la zona resaltada.
+/// **⇧⌃ (Shift+Control)**, y al soltar acopla la ventana a la(s) zona(s)
+/// resaltada(s) — sobre una línea divisoria se acopla al span de ambas.
 ///
 /// Glue de sistema (monitores globales de `NSEvent` + `NSWindow` overlay +
 /// `AXUIElement`); no es unit-testable. El cálculo de zona/frame se delega en
@@ -67,7 +68,7 @@ final class DragOverlayController {
         }
 
         showOverlay(on: screen, zones: zones)
-        overlayModel.highlightZone(at: Self.localPoint(of: mouse, in: screen))
+        overlayModel.highlightZones(at: Self.localPoint(of: mouse, in: screen))
     }
 
     private func handleDrop() {
@@ -78,12 +79,11 @@ final class DragOverlayController {
         guard
             let pid = draggedPID,
             let screen = activeScreen,
-            let zoneID = overlayModel.highlightedZoneID,
-            let zone = overlayModel.zones.first(where: { $0.id == zoneID })
+            let rect = overlayModel.highlightedRect
         else { return }
 
         let origin = Self.globalTopLeftOrigin(of: screen)
-        let frame = WindowFrameCalculator.globalFrame(localRect: zone.rect, monitorOrigin: origin)
+        let frame = WindowFrameCalculator.globalFrame(localRect: rect, monitorOrigin: origin)
         try? mover.moveFocusedWindow(ofPID: pid, to: frame)
     }
 
@@ -114,7 +114,7 @@ final class DragOverlayController {
     private func hideOverlay() {
         overlayWindow?.orderOut(nil)
         activeScreen = nil
-        overlayModel.highlightedZoneID = nil
+        overlayModel.highlightedZoneIDs = []
     }
 
     // MARK: - Geometría

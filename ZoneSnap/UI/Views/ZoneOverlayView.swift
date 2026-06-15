@@ -7,9 +7,9 @@
 
 import SwiftUI
 
-/// Dibuja las zonas iluminadas sobre un fondo transparente y resalta la que está
-/// bajo el cursor. Pensada para ir dentro de una ventana-overlay a tamaño del
-/// monitor (F4b); aquí solo presenta el estado de `OverlayModel`.
+/// Dibuja las zonas iluminadas sobre un fondo transparente y resalta la(s) que
+/// están bajo el cursor (una o varias en span). Pensada para ir dentro de una
+/// ventana-overlay a tamaño del monitor (F4b).
 struct ZoneOverlayView: View {
     let model: OverlayModel
 
@@ -22,7 +22,7 @@ struct ZoneOverlayView: View {
                 Color.clear
 
                 ForEach(model.zones) { zone in
-                    let isHot = zone.id == model.highlightedZoneID
+                    let isHot = model.highlightedZoneIDs.contains(zone.id)
                     RoundedRectangle(cornerRadius: 14)
                         .fill(Color.accentColor.opacity(isHot ? 0.35 : 0.10))
                         .overlay {
@@ -42,7 +42,7 @@ struct ZoneOverlayView: View {
     }
 }
 
-#Preview("overlay con zona resaltada") {
+#Preview("overlay con span de 2 zonas") {
     let bounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
     let zones = ZoneCalculator.zones(in: bounds, lines: [
         GridLine(orientation: .vertical, position: 640),
@@ -51,8 +51,8 @@ struct ZoneOverlayView: View {
     ])
     let model = OverlayModel()
     model.configure(bounds: bounds, zones: zones)
-    model.highlightedZoneID = zones[4].id
+    model.highlightedZoneIDs = [zones[4].id, zones[5].id]
     return ZoneOverlayView(model: model)
         .frame(width: 520, height: 300)
-        .background(.black) // simula el escritorio bajo el overlay
+        .background(.black)
 }
