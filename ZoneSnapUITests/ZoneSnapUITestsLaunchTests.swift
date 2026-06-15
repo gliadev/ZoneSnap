@@ -2,34 +2,11 @@
 //  ZoneSnapUITestsLaunchTests.swift
 //  ZoneSnapUITests
 //
-//  Created by Adolfo on 15/06/2026.
+//  ZoneSnap usa Swift Testing para los unit tests (ver ZoneSnapTests/).
+//  No se usan UI tests por ahora; este placeholder se deja vacío para no
+//  disparar el Thread Performance Checker en el `launch()` de plantilla.
 //
 
 import XCTest
 
-final class ZoneSnapUITestsLaunchTests: XCTestCase {
-
-    override class var runsForEachTargetApplicationUIConfiguration: Bool {
-        true
-    }
-
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
-    @MainActor
-    func testLaunch() throws {
-        let app = XCUIApplication()
-        app.launch()
-
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
-
-        let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "Launch Screen"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-    }
-}
+final class ZoneSnapUITestsLaunchTests: XCTestCase {}
