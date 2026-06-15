@@ -22,6 +22,8 @@ struct MonitorPreview: View {
     var onSelectZone: ((Zone.ID, _ extending: Bool) -> Void)? = nil
     /// Callback al arrastrar una línea: `(lineID, nuevaPosición)`. `nil` = sin arrastre.
     var onMoveLine: ((GridLine.ID, CGFloat) -> Void)? = nil
+    /// Callback al soltar una línea fuera del borde (borrarla).
+    var onRemoveLine: ((GridLine.ID) -> Void)? = nil
 
     var body: some View {
         GeometryReader { proxy in
@@ -55,7 +57,8 @@ struct MonitorPreview: View {
                             scaleX: scaleX,
                             scaleY: scaleY,
                             size: proxy.size,
-                            onMove: { onMoveLine(line.id, $0) }
+                            onMove: { onMoveLine(line.id, $0) },
+                            onRemove: { onRemoveLine?(line.id) }
                         )
                     }
                 }
@@ -82,7 +85,8 @@ struct MonitorPreview: View {
         lines: lines,
         selectedZoneIDs: [zones[4].id, zones[5].id],
         onSelectZone: { _, _ in },
-        onMoveLine: { _, _ in }
+        onMoveLine: { _, _ in },
+        onRemoveLine: { _ in }
     )
     .padding()
     .frame(width: 520, height: 320)

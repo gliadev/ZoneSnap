@@ -8,8 +8,10 @@
 import SwiftUI
 
 /// Editor visual de zonas: elige monitor, configura la rejilla (arrastrando las
-/// líneas para redimensionar), aplica/guarda perfiles, selecciona zonas y mueve
-/// la ventana activa sobre ellas.
+/// líneas para redimensionar, o fuera del borde para borrarlas), aplica/guarda
+/// perfiles, selecciona zonas y mueve la ventana activa sobre ellas. El layout
+/// por monitor se auto-guarda; el único guardado explícito es "Guardar como
+/// perfil".
 struct EditorView: View {
     let app: AppModel
     let snapper: WindowSnapper
@@ -34,9 +36,6 @@ struct EditorView: View {
                 profileMenu(app: app)
 
                 Spacer()
-
-                Button("Guardar", systemImage: "square.and.arrow.down", action: saveLayout)
-                    .disabled(app.selectedMonitor == nil)
             }
 
             MonitorPreview(
@@ -45,15 +44,17 @@ struct EditorView: View {
                 lines: editor.lines,
                 selectedZoneIDs: editor.selectedZoneIDs,
                 onSelectZone: { id, extending in editor.selectZone(id, extending: extending) },
-                onMoveLine: { id, position in editor.moveLine(id, to: position) }
+                onMoveLine: { id, position in editor.moveLine(id, to: position) },
+                onRemoveLine: { id in editor.removeLine(id) }
             )
             .frame(maxWidth: .infinity)
 
             EditorControls(model: editor)
 
-            Text("Arrastra las líneas blancas para redimensionar · click para seleccionar (Shift = varias)")
+            Text("Arrastra las líneas para redimensionar (fuera del borde para borrarlas) · click para seleccionar (Shift = varias)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
 
             HStack {
                 Button("Mover ventana activa aquí", systemImage: "macwindow.on.rectangle", action: moveWindow)
@@ -86,6 +87,12 @@ struct EditorView: View {
                 app.setLayout(zones: editor.previewZones, for: oldMonitor)
             }
             configureEditor(for: newID)
+        }
+        .onChange(of: editor.lines) { _, _ in
+            // Auto-guardado del layout del monitor actual (debounced).
+            if let monitor = app.selectedMonitor {
+                app.scheduleAutosave(zones: editor.previewZones, for: monitor)
+            }
         }
         .alert("Guardar perfil", isPresented: $showingNamePrompt) {
             TextField("Nombre (p. ej. dev)", text: $profileName)
@@ -126,11 +133,6 @@ struct EditorView: View {
         guard let monitor = app.monitors.first(where: { $0.id == monitorID }) else { return }
         editor.updateBounds(CGRect(origin: .zero, size: monitor.resolution))
         editor.load(app.savedZones(for: monitor.id))
-    }
-
-    private func saveLayout() {
-        guard let monitor = app.selectedMonitor else { return }
-        Task { try? await app.save(zones: editor.previewZones, for: monitor) }
     }
 
     private func moveWindow() {

@@ -22,6 +22,8 @@ final class AppModel {
     var selectedMonitorID: Monitor.ID?
     private(set) var config = ZoneConfig()
 
+    @ObservationIgnored private var autosaveTask: Task<Void, Never>?
+
     init(repository: any ZoneConfigRepository, monitorProvider: any MonitorProviding) {
         self.repository = repository
         self.monitorProvider = monitorProvider
@@ -56,8 +58,7 @@ final class AppModel {
         config.monitors.first { $0.monitor.id == monitorID }?.layout.grid.zones ?? []
     }
 
-    /// Actualiza (upsert) el layout de un monitor **solo en memoria**. Se usa al
-    /// cambiar de monitor para no perder la edición en curso.
+    /// Actualiza (upsert) el layout de un monitor **solo en memoria**.
     func setLayout(zones: [Zone], for monitor: Monitor, layoutName: String = "Personalizado") {
         let pairing = MonitorLayout(
             monitor: monitor,
@@ -79,6 +80,18 @@ final class AppModel {
     func save(zones: [Zone], for monitor: Monitor, layoutName: String = "Personalizado") async throws {
         setLayout(zones: zones, for: monitor, layoutName: layoutName)
         try await persist()
+    }
+
+    /// Programa un auto-guardado: actualiza el layout en memoria al instante y
+    /// persiste a disco tras una pausa, cancelando el guardado previo (debounce).
+    func scheduleAutosave(zones: [Zone], for monitor: Monitor) {
+        setLayout(zones: zones, for: monitor)
+        autosaveTask?.cancel()
+        autosaveTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            if Task.isCancelled { return }
+            try? await self?.persist()
+        }
     }
 }
 

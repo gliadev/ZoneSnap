@@ -9,7 +9,7 @@ import SwiftUI
 
 /// Barra arrastrable que representa una línea divisoria. El área de arrastre es
 /// más ancha que la línea visible para facilitar el agarre. Informa la nueva
-/// posición (en coordenadas locales del monitor) mientras se arrastra.
+/// posición mientras se arrastra y, si se suelta fuera del área, pide borrarla.
 struct LineHandle: View {
     let line: GridLine
     let bounds: CGRect
@@ -17,6 +17,7 @@ struct LineHandle: View {
     let scaleY: CGFloat
     let size: CGSize
     let onMove: (CGFloat) -> Void
+    let onRemove: () -> Void
 
     private var isVertical: Bool { line.orientation == .vertical }
 
@@ -39,12 +40,24 @@ struct LineHandle: View {
             .position(center)
             .gesture(
                 DragGesture(coordinateSpace: .named(MonitorPreview.coordinateSpace))
-                    .onChanged { value in
-                        let local = isVertical
-                            ? value.location.x / scaleX + bounds.minX
-                            : value.location.y / scaleY + bounds.minY
-                        onMove(local)
+                    .onChanged { value in onMove(localPosition(of: value)) }
+                    .onEnded { value in
+                        if isOutsideBounds(localPosition(of: value)) { onRemove() }
                     }
             )
+    }
+
+    /// Posición del arrastre en coordenadas locales del monitor.
+    private func localPosition(of value: DragGesture.Value) -> CGFloat {
+        isVertical
+            ? value.location.x / scaleX + bounds.minX
+            : value.location.y / scaleY + bounds.minY
+    }
+
+    /// `true` si la posición cae fuera del área (arrastrada fuera del borde).
+    private func isOutsideBounds(_ position: CGFloat) -> Bool {
+        isVertical
+            ? position < bounds.minX || position > bounds.maxX
+            : position < bounds.minY || position > bounds.maxY
     }
 }
