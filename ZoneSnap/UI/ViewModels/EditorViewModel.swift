@@ -74,7 +74,7 @@ extension EditorViewModel {
     func setColumns(_ columns: Int) {
         let clamped = max(1, columns)
         lines.removeAll { $0.orientation == .vertical }
-        for index in 1..<max(1, clamped) where clamped > 1 {
+        for index in 1..<clamped {
             let x = bounds.minX + bounds.width * CGFloat(index) / CGFloat(clamped)
             lines.append(GridLine(orientation: .vertical, position: x))
         }
@@ -86,10 +86,32 @@ extension EditorViewModel {
     func setRows(_ rows: Int) {
         let clamped = max(1, rows)
         lines.removeAll { $0.orientation == .horizontal }
-        for index in 1..<max(1, clamped) where clamped > 1 {
+        for index in 1..<clamped {
             let y = bounds.minY + bounds.height * CGFloat(index) / CGFloat(clamped)
             lines.append(GridLine(orientation: .horizontal, position: y))
         }
+        recompute()
+    }
+}
+
+// MARK: - Carga desde zonas persistidas
+
+extension EditorViewModel {
+    /// Reconstruye las líneas a partir de un conjunto de zonas alineadas a
+    /// rejilla (las que produce el propio editor): toma los bordes internos
+    /// como líneas. Para zonas no alineadas la reconstrucción es aproximada.
+    func load(_ zones: [Zone]) {
+        guard !zones.isEmpty else {
+            clear()
+            return
+        }
+        let internalXs = Set(zones.flatMap { [$0.rect.minX, $0.rect.maxX] })
+            .subtracting([bounds.minX, bounds.maxX])
+        let internalYs = Set(zones.flatMap { [$0.rect.minY, $0.rect.maxY] })
+            .subtracting([bounds.minY, bounds.maxY])
+
+        lines = internalXs.sorted().map { GridLine(orientation: .vertical, position: $0) }
+            + internalYs.sorted().map { GridLine(orientation: .horizontal, position: $0) }
         recompute()
     }
 }

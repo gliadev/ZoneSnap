@@ -7,32 +7,66 @@
 
 import SwiftUI
 
-/// Editor visual de zonas: muestra la preview del monitor y los controles para
-/// configurar la rejilla. Posee el `EditorViewModel`.
+/// Editor visual de zonas: elige monitor, configura la rejilla y guarda el
+/// layout. El estado de app (monitores + persistencia) llega en `app`; el
+/// estado de edición vive en un `EditorViewModel` propio.
 struct EditorView: View {
-    @State private var model: EditorViewModel
-
-    init(bounds: CGRect = CGRect(x: 0, y: 0, width: 1920, height: 1080)) {
-        _model = State(initialValue: EditorViewModel(bounds: bounds))
-    }
+    let app: AppModel
+    @State private var editor = EditorViewModel(bounds: CGRect(x: 0, y: 0, width: 1920, height: 1080))
 
     var body: some View {
+        @Bindable var app = app
+
         VStack(spacing: 20) {
-            MonitorPreview(bounds: model.bounds, zones: model.previewZones, lines: model.lines)
+            HStack {
+                Picker("Monitor", selection: $app.selectedMonitorID) {
+                    ForEach(app.monitors) { monitor in
+                        Text(monitor.name ?? "Monitor").tag(Optional(monitor.id))
+                    }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
+
+                Spacer()
+
+                Button("Guardar", systemImage: "square.and.arrow.down", action: saveLayout)
+                    .disabled(app.selectedMonitor == nil)
+            }
+
+            MonitorPreview(bounds: editor.bounds, zones: editor.previewZones, lines: editor.lines)
                 .frame(maxWidth: .infinity)
 
-            EditorControls(model: model)
+            EditorControls(model: editor)
 
-            Text("\(model.previewZones.count) zonas")
+            Text("\(editor.previewZones.count) zonas")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .frame(minWidth: 520, minHeight: 420)
+        .frame(minWidth: 520, minHeight: 460)
         .navigationTitle("Editor de zonas")
+        .task {
+            await app.start()
+            configureEditor(for: app.selectedMonitorID)
+        }
+        .onChange(of: app.selectedMonitorID) { _, newID in
+            configureEditor(for: newID)
+        }
+    }
+
+    /// Ajusta el editor al monitor seleccionado y carga sus zonas guardadas.
+    private func configureEditor(for monitorID: Monitor.ID?) {
+        guard let monitor = app.monitors.first(where: { $0.id == monitorID }) else { return }
+        editor.updateBounds(CGRect(origin: .zero, size: monitor.resolution))
+        editor.load(app.savedZones(for: monitor.id))
+    }
+
+    private func saveLayout() {
+        guard let monitor = app.selectedMonitor else { return }
+        Task { try? await app.save(zones: editor.previewZones, for: monitor) }
     }
 }
 
 #Preview {
-    EditorView()
+    EditorView(app: .preview)
 }

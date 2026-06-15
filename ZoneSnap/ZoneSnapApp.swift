@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct ZoneSnapApp: App {
+    @State private var app = AppModel(
+        repository: LocalZoneConfigRepository(),
+        monitorProvider: NSScreenMonitorProvider()
+    )
+
     var body: some Scene {
         Window("ZoneSnap — Editor", id: ZoneSnapWindow.editor) {
-            EditorView()
+            EditorView(app: app)
         }
         .windowResizability(.contentMinSize)
 

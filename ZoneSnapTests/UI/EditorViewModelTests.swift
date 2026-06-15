@@ -99,4 +99,26 @@ struct EditorViewModelTests {
         #expect(vm.columnCount == 1)
         #expect(vm.previewZones.count == 1)
     }
+
+    @Test("load reconstruye las líneas de una rejilla 2x2")
+    func loadReconstructsGrid() {
+        let vm = EditorViewModel(bounds: bounds)
+        let zones = ZoneCalculator.zones(in: bounds, lines: [
+            GridLine(orientation: .vertical, position: 500),
+            GridLine(orientation: .horizontal, position: 400)
+        ])
+        vm.load(zones)
+        #expect(vm.columnCount == 2)
+        #expect(vm.rowCount == 2)
+        #expect(vm.previewZones.count == 4)
+    }
+
+    @Test("load con lista vacía deja una sola zona")
+    func loadEmpty() {
+        let vm = EditorViewModel(bounds: bounds)
+        vm.setColumns(3)
+        vm.load([])
+        #expect(vm.lines.isEmpty)
+        #expect(vm.previewZones.count == 1)
+    }
 }
