@@ -55,3 +55,41 @@ final class EditorViewModel {
         previewZones = ZoneCalculator.zones(in: bounds, lines: lines)
     }
 }
+
+// MARK: - Presets de rejilla
+
+extension EditorViewModel {
+    /// Columnas actuales (líneas verticales + 1).
+    var columnCount: Int {
+        lines.filter { $0.orientation == .vertical }.count + 1
+    }
+
+    /// Filas actuales (líneas horizontales + 1).
+    var rowCount: Int {
+        lines.filter { $0.orientation == .horizontal }.count + 1
+    }
+
+    /// Reparte el área en `columns` columnas iguales (mínimo 1), sustituyendo
+    /// las líneas verticales actuales.
+    func setColumns(_ columns: Int) {
+        let clamped = max(1, columns)
+        lines.removeAll { $0.orientation == .vertical }
+        for index in 1..<max(1, clamped) where clamped > 1 {
+            let x = bounds.minX + bounds.width * CGFloat(index) / CGFloat(clamped)
+            lines.append(GridLine(orientation: .vertical, position: x))
+        }
+        recompute()
+    }
+
+    /// Reparte el área en `rows` filas iguales (mínimo 1), sustituyendo las
+    /// líneas horizontales actuales.
+    func setRows(_ rows: Int) {
+        let clamped = max(1, rows)
+        lines.removeAll { $0.orientation == .horizontal }
+        for index in 1..<max(1, clamped) where clamped > 1 {
+            let y = bounds.minY + bounds.height * CGFloat(index) / CGFloat(clamped)
+            lines.append(GridLine(orientation: .horizontal, position: y))
+        }
+        recompute()
+    }
+}

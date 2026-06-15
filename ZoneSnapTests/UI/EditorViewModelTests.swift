@@ -63,4 +63,40 @@ struct EditorViewModelTests {
         vm.addLine(.vertical, at: 500)
         #expect(vm.previewZones.map(\.id) == vm.previewZones.map(\.id))
     }
+
+    @Test("setColumns reparte el área en columnas iguales")
+    func setColumns() {
+        let vm = EditorViewModel(bounds: bounds)
+        vm.setColumns(4)
+        #expect(vm.columnCount == 4)
+        #expect(vm.previewZones.count == 4)
+        #expect(vm.previewZones.allSatisfy { $0.rect.width == 250 })
+    }
+
+    @Test("setColumns(1) deja una sola columna")
+    func setColumnsToOne() {
+        let vm = EditorViewModel(bounds: bounds)
+        vm.setColumns(3)
+        vm.setColumns(1)
+        #expect(vm.columnCount == 1)
+        #expect(vm.previewZones.count == 1)
+    }
+
+    @Test("columnas y filas combinan en una rejilla")
+    func columnsAndRowsGrid() {
+        let vm = EditorViewModel(bounds: bounds)
+        vm.setColumns(3)
+        vm.setRows(2)
+        #expect(vm.columnCount == 3)
+        #expect(vm.rowCount == 2)
+        #expect(vm.previewZones.count == 6)
+    }
+
+    @Test("valores por debajo de 1 se tratan como 1")
+    func clampsBelowOne() {
+        let vm = EditorViewModel(bounds: bounds)
+        vm.setColumns(0)
+        #expect(vm.columnCount == 1)
+        #expect(vm.previewZones.count == 1)
+    }
 }
