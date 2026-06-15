@@ -29,18 +29,15 @@ final class AppModel {
         self.monitorProvider = monitorProvider
     }
 
-    /// Monitor actualmente seleccionado, si lo hay.
     var selectedMonitor: Monitor? {
         monitors.first { $0.id == selectedMonitorID }
     }
 
-    /// Carga monitores y configuración al arrancar la UI.
     func start() async {
         await refreshMonitors()
         try? await loadConfig()
     }
 
-    /// Recarga los monitores conectados; mantiene o ajusta la selección.
     func refreshMonitors() async {
         monitors = await monitorProvider.currentMonitors()
         if selectedMonitorID == nil || !monitors.contains(where: { $0.id == selectedMonitorID }) {
@@ -48,22 +45,30 @@ final class AppModel {
         }
     }
 
-    /// Carga la configuración persistida.
     func loadConfig() async throws {
         config = try await repository.load()
     }
 
     /// Zonas guardadas para un monitor (vacío si no hay layout guardado).
     func savedZones(for monitorID: Monitor.ID) -> [Zone] {
-        config.monitors.first { $0.monitor.id == monitorID }?.layout.grid.zones ?? []
+        savedLayout(for: monitorID)?.grid.zones ?? []
+    }
+
+    /// Layout guardado para un monitor (incluye `lines` + `merges` del editor).
+    func savedLayout(for monitorID: Monitor.ID) -> Layout? {
+        config.monitors.first { $0.monitor.id == monitorID }?.layout
     }
 
     /// Actualiza (upsert) el layout de un monitor **solo en memoria**.
-    func setLayout(zones: [Zone], for monitor: Monitor, layoutName: String = "Personalizado") {
-        let pairing = MonitorLayout(
-            monitor: monitor,
-            layout: Layout(name: layoutName, grid: ZoneGrid(zones: zones))
-        )
+    func setLayout(
+        zones: [Zone],
+        lines: [GridLine] = [],
+        merges: [[GridCell]] = [],
+        for monitor: Monitor,
+        layoutName: String = "Personalizado"
+    ) {
+        let layout = Layout(name: layoutName, grid: ZoneGrid(zones: zones), lines: lines, merges: merges)
+        let pairing = MonitorLayout(monitor: monitor, layout: layout)
         if let index = config.monitors.firstIndex(where: { $0.monitor.id == monitor.id }) {
             config.monitors[index] = pairing
         } else {
@@ -76,16 +81,27 @@ final class AppModel {
         try await repository.save(config)
     }
 
-    /// Guarda (upsert) las zonas del monitor dado y persiste a disco.
-    func save(zones: [Zone], for monitor: Monitor, layoutName: String = "Personalizado") async throws {
-        setLayout(zones: zones, for: monitor, layoutName: layoutName)
+    /// Guarda (upsert) el layout del monitor dado y persiste a disco.
+    func save(
+        zones: [Zone],
+        lines: [GridLine] = [],
+        merges: [[GridCell]] = [],
+        for monitor: Monitor,
+        layoutName: String = "Personalizado"
+    ) async throws {
+        setLayout(zones: zones, lines: lines, merges: merges, for: monitor, layoutName: layoutName)
         try await persist()
     }
 
-    /// Programa un auto-guardado: actualiza el layout en memoria al instante y
-    /// persiste a disco tras una pausa, cancelando el guardado previo (debounce).
-    func scheduleAutosave(zones: [Zone], for monitor: Monitor) {
-        setLayout(zones: zones, for: monitor)
+    /// Programa un auto-guardado: actualiza en memoria al instante y persiste a
+    /// disco tras una pausa, cancelando el guardado previo (debounce).
+    func scheduleAutosave(
+        zones: [Zone],
+        lines: [GridLine] = [],
+        merges: [[GridCell]] = [],
+        for monitor: Monitor
+    ) {
+        setLayout(zones: zones, lines: lines, merges: merges, for: monitor)
         autosaveTask?.cancel()
         autosaveTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))
@@ -98,13 +114,10 @@ final class AppModel {
 // MARK: - Perfiles de distribución
 
 extension AppModel {
-    /// Perfiles de distribución guardados.
     var profiles: [LayoutProfile] {
         config.profiles
     }
 
-    /// Guarda (upsert por nombre) un perfil a partir de las líneas actuales del
-    /// editor, normalizándolas respecto a `bounds`. Persiste a disco.
     func saveProfile(name: String, lines: [GridLine], bounds: CGRect) async throws {
         let normalized = LayoutProfileMapper.normalize(lines, in: bounds)
         if let index = config.profiles.firstIndex(where: { $0.name == name }) {
@@ -115,7 +128,6 @@ extension AppModel {
         try await persist()
     }
 
-    /// Borra un perfil y persiste.
     func deleteProfile(_ id: LayoutProfile.ID) async throws {
         config.profiles.removeAll { $0.id == id }
         try await persist()

@@ -8,10 +8,9 @@
 import SwiftUI
 
 /// Editor visual de zonas: elige monitor, configura la rejilla (arrastrando las
-/// líneas para redimensionar, o fuera del borde para borrarlas), aplica/guarda
-/// perfiles, selecciona zonas y mueve la ventana activa sobre ellas. El layout
-/// por monitor se auto-guarda; el único guardado explícito es "Guardar como
-/// perfil".
+/// líneas para redimensionar, o fuera del borde para borrarlas), fusiona/separa
+/// zonas, aplica/guarda perfiles y mueve la ventana activa. El layout por
+/// monitor se auto-guarda; el único guardado explícito es "Guardar como perfil".
 struct EditorView: View {
     let app: AppModel
     let snapper: WindowSnapper
@@ -52,7 +51,7 @@ struct EditorView: View {
 
             EditorControls(model: editor)
 
-            Text("Arrastra las líneas para redimensionar (fuera del borde para borrarlas) · click para seleccionar (Shift = varias) · ⇧⌃ + arrastrar ventana para acoplar")
+            Text("Arrastra líneas para redimensionar (fuera del borde = borrar) · click para seleccionar (Shift = varias) · Fusionar zonas seleccionadas · ⇧⌃ + arrastrar ventana para acoplar")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -76,7 +75,7 @@ struct EditorView: View {
             }
         }
         .padding()
-        .frame(minWidth: 580, minHeight: 540)
+        .frame(minWidth: 600, minHeight: 540)
         .navigationTitle("Editor de zonas")
         .task {
             await app.start()
@@ -86,13 +85,13 @@ struct EditorView: View {
         }
         .onChange(of: app.selectedMonitorID) { oldID, newID in
             if let oldMonitor = app.monitors.first(where: { $0.id == oldID }) {
-                app.setLayout(zones: editor.previewZones, for: oldMonitor)
+                app.setLayout(zones: editor.previewZones, lines: editor.lines, merges: editor.merges, for: oldMonitor)
             }
             configureEditor(for: newID)
         }
-        .onChange(of: editor.lines) { _, _ in
+        .onChange(of: editor.previewZones) { _, _ in
             if let monitor = app.selectedMonitor {
-                app.scheduleAutosave(zones: editor.previewZones, for: monitor)
+                app.scheduleAutosave(zones: editor.previewZones, lines: editor.lines, merges: editor.merges, for: monitor)
             }
         }
         .alert("Guardar perfil", isPresented: $showingNamePrompt) {
@@ -129,11 +128,16 @@ struct EditorView: View {
         .fixedSize()
     }
 
-    /// Ajusta el editor al monitor seleccionado y carga sus zonas guardadas.
+    /// Ajusta el editor al monitor seleccionado y restaura su layout guardado
+    /// (modelo completo líneas+fusiones si existe; si no, reconstruye de zonas).
     private func configureEditor(for monitorID: Monitor.ID?) {
         guard let monitor = app.monitors.first(where: { $0.id == monitorID }) else { return }
         editor.updateBounds(CGRect(origin: .zero, size: monitor.resolution))
-        editor.load(app.savedZones(for: monitor.id))
+        if let layout = app.savedLayout(for: monitor.id), !layout.lines.isEmpty {
+            editor.applyModel(lines: layout.lines, merges: layout.merges)
+        } else {
+            editor.load(app.savedZones(for: monitor.id))
+        }
     }
 
     private func moveWindow() {

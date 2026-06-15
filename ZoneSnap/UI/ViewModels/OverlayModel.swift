@@ -17,7 +17,7 @@ import Observation
 final class OverlayModel {
     /// Distancia al borde (puntos) para considerar que el cursor "toca" una
     /// línea divisoria y resaltar las zonas de ambos lados (span).
-    static let spanThreshold: CGFloat = 35
+    nonisolated static let spanThreshold: CGFloat = 35
 
     /// Área del monitor cubierta por el overlay.
     var bounds: CGRect = .zero
