@@ -18,9 +18,30 @@ struct ZoneConfig: Codable, Sendable, Hashable {
     /// Layout asignado a cada monitor conocido.
     var monitors: [MonitorLayout]
 
-    init(version: Int = ZoneConfig.currentVersion, monitors: [MonitorLayout] = []) {
+    /// Perfiles de distribución reutilizables (modo dev, cine, etc.).
+    var profiles: [LayoutProfile]
+
+    init(
+        version: Int = ZoneConfig.currentVersion,
+        monitors: [MonitorLayout] = [],
+        profiles: [LayoutProfile] = []
+    ) {
         self.version = version
         self.monitors = monitors
+        self.profiles = profiles
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, monitors, profiles
+    }
+
+    /// Decodificación tolerante: los ficheros antiguos sin `profiles` (o sin
+    /// `monitors`) se leen con esos campos vacíos en lugar de fallar.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? ZoneConfig.currentVersion
+        monitors = try container.decodeIfPresent([MonitorLayout].self, forKey: .monitors) ?? []
+        profiles = try container.decodeIfPresent([LayoutProfile].self, forKey: .profiles) ?? []
     }
 }
 

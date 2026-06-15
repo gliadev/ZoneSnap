@@ -82,6 +82,33 @@ final class AppModel {
     }
 }
 
+// MARK: - Perfiles de distribución
+
+extension AppModel {
+    /// Perfiles de distribución guardados.
+    var profiles: [LayoutProfile] {
+        config.profiles
+    }
+
+    /// Guarda (upsert por nombre) un perfil a partir de las líneas actuales del
+    /// editor, normalizándolas respecto a `bounds`. Persiste a disco.
+    func saveProfile(name: String, lines: [GridLine], bounds: CGRect) async throws {
+        let normalized = LayoutProfileMapper.normalize(lines, in: bounds)
+        if let index = config.profiles.firstIndex(where: { $0.name == name }) {
+            config.profiles[index].lines = normalized
+        } else {
+            config.profiles.append(LayoutProfile(name: name, lines: normalized))
+        }
+        try await persist()
+    }
+
+    /// Borra un perfil y persiste.
+    func deleteProfile(_ id: LayoutProfile.ID) async throws {
+        config.profiles.removeAll { $0.id == id }
+        try await persist()
+    }
+}
+
 extension AppModel {
     /// Instancia para previews de SwiftUI: en memoria, con monitores de ejemplo.
     static var preview: AppModel {

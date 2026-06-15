@@ -121,6 +121,12 @@ extension EditorViewModel {
         lines[index].position = min(max(snapped, lower), upper)
         recompute()
     }
+
+    /// Sustituye todas las líneas por las dadas (al aplicar un perfil).
+    func applyLines(_ newLines: [GridLine]) {
+        lines = newLines
+        recompute()
+    }
 }
 
 // MARK: - Carga desde zonas persistidas
