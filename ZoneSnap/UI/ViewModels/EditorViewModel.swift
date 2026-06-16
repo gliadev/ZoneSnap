@@ -9,24 +9,32 @@ import CoreGraphics
 import Foundation
 import Observation
 
-/// Estado y lógica del editor de zonas.
+/// Estado y lógica del editor de zonas, sobre el árbol de subdivisión
+/// (`ZoneNode`). Mantiene el árbol como fuente de verdad y deriva la preview de
+/// zonas y las fronteras arrastrables con `BSPCalculator`.
 ///
-/// Mantiene las líneas divisorias (y opcionalmente fusiones de celdas) y
-/// recalcula la preview de zonas con `ZoneCalculator` ante cada cambio. Trabaja
-/// en el espacio local del monitor (puntos, origen arriba-izquierda).
+/// Las operaciones de columnas/filas son **locales a la zona seleccionada**:
+/// subdividir o ajustar una franja no toca el resto del diseño. Trabaja en el
+/// espacio local del monitor (puntos, origen arriba-izquierda).
 @MainActor
 @Observable
 final class EditorViewModel {
     private(set) var bounds: CGRect
-    private(set) var lines: [GridLine] = []
-    private(set) var merges: [[GridCell]] = []
+    private(set) var tree: ZoneNode
     private(set) var previewZones: [Zone] = []
+    private(set) var boundaries: [Boundary] = []
 
-    /// Zonas seleccionadas (para resaltar, fusionar y colocar ventanas).
-    private(set) var selectedZoneIDs: Set<Zone.ID> = []
+    /// Zona (hoja) seleccionada para subdividir, unir o colocar una ventana.
+    private(set) var selectedZoneID: Zone.ID?
+
+    /// Fracción mínima por hijo al arrastrar una frontera (evita zonas de 0px).
+    static let minBoundaryFraction: CGFloat = 0.04
+    /// Tope de columnas/filas por franja en los steppers.
+    static let maxDivisions = 8
 
     init(bounds: CGRect) {
         self.bounds = bounds
+        self.tree = .leaf(id: UUID())
         recompute()
     }
 
@@ -35,185 +43,133 @@ final class EditorViewModel {
         recompute()
     }
 
-    func addLine(_ orientation: LineOrientation, at position: CGFloat) {
-        lines.append(GridLine(orientation: orientation, position: position))
-        merges.removeAll() // cambia la rejilla → las fusiones dejan de ser válidas
-        recompute()
-    }
-
-    func removeLine(_ id: GridLine.ID) {
-        lines.removeAll { $0.id == id }
-        merges.removeAll()
-        recompute()
-    }
-
-    /// Borra líneas y fusiones (vuelve a una única zona = el área completa).
+    /// Vuelve a una única zona (toda el área).
     func clear() {
-        lines.removeAll()
-        merges.removeAll()
+        tree = .leaf(id: UUID())
+        selectedZoneID = nil
         recompute()
     }
 
     private func recompute() {
-        previewZones = ZoneCalculator.zones(in: bounds, lines: lines, merges: merges)
-        selectedZoneIDs.removeAll()
-    }
-}
-
-// MARK: - Presets de rejilla
-
-extension EditorViewModel {
-    var columnCount: Int {
-        lines.filter { $0.orientation == .vertical }.count + 1
-    }
-
-    var rowCount: Int {
-        lines.filter { $0.orientation == .horizontal }.count + 1
-    }
-
-    func setColumns(_ columns: Int) {
-        let clamped = max(1, columns)
-        lines.removeAll { $0.orientation == .vertical }
-        for index in 1..<clamped {
-            lines.append(GridLine(orientation: .vertical, position: bounds.minX + bounds.width * CGFloat(index) / CGFloat(clamped)))
+        previewZones = BSPCalculator.zones(of: tree, in: bounds)
+        boundaries = BSPCalculator.boundaries(of: tree, in: bounds)
+        if let id = selectedZoneID, !previewZones.contains(where: { $0.id == id }) {
+            selectedZoneID = nil
         }
-        merges.removeAll()
-        recompute()
-    }
-
-    func setRows(_ rows: Int) {
-        let clamped = max(1, rows)
-        lines.removeAll { $0.orientation == .horizontal }
-        for index in 1..<clamped {
-            lines.append(GridLine(orientation: .horizontal, position: bounds.minY + bounds.height * CGFloat(index) / CGFloat(clamped)))
-        }
-        merges.removeAll()
-        recompute()
     }
 }
 
-// MARK: - Edición libre de líneas
+// MARK: - Selección
 
 extension EditorViewModel {
-    static let lineSnapStep: CGFloat = 8
-    static let lineMinMargin: CGFloat = 24
-
-    /// Reposiciona una línea (al arrastrarla). Mantiene las fusiones (no cambia
-    /// la estructura de celdas, solo su tamaño).
-    func moveLine(_ id: GridLine.ID, to position: CGFloat) {
-        guard let index = lines.firstIndex(where: { $0.id == id }) else { return }
-        let isVertical = lines[index].orientation == .vertical
-        let lower = (isVertical ? bounds.minX : bounds.minY) + Self.lineMinMargin
-        let upper = (isVertical ? bounds.maxX : bounds.maxY) - Self.lineMinMargin
-        let snapped = (position / Self.lineSnapStep).rounded() * Self.lineSnapStep
-        lines[index].position = min(max(snapped, lower), upper)
-        recompute()
+    var selectedZone: Zone? {
+        previewZones.first { $0.id == selectedZoneID }
     }
 
-    /// Sustituye todas las líneas por las dadas (al aplicar un perfil). Resetea fusiones.
-    func applyLines(_ newLines: [GridLine]) {
-        lines = newLines
-        merges.removeAll()
-        recompute()
-    }
-
-    /// Restaura el modelo completo del editor (líneas + fusiones) desde persistencia.
-    func applyModel(lines newLines: [GridLine], merges newMerges: [[GridCell]]) {
-        lines = newLines
-        merges = newMerges
-        recompute()
-    }
-}
-
-// MARK: - Carga desde zonas persistidas
-
-extension EditorViewModel {
-    /// Reconstruye las líneas a partir de zonas alineadas a rejilla (compat con
-    /// configuraciones antiguas sin modelo de editor guardado).
-    func load(_ zones: [Zone]) {
-        guard !zones.isEmpty else {
-            clear()
-            return
-        }
-        let internalXs = Set(zones.flatMap { [$0.rect.minX, $0.rect.maxX] }).subtracting([bounds.minX, bounds.maxX])
-        let internalYs = Set(zones.flatMap { [$0.rect.minY, $0.rect.maxY] }).subtracting([bounds.minY, bounds.maxY])
-
-        lines = internalXs.sorted().map { GridLine(orientation: .vertical, position: $0) }
-            + internalYs.sorted().map { GridLine(orientation: .horizontal, position: $0) }
-        merges.removeAll()
-        recompute()
-    }
-}
-
-// MARK: - Selección de zonas
-
-extension EditorViewModel {
-    var selectedZones: [Zone] {
-        previewZones.filter { selectedZoneIDs.contains($0.id) }
-    }
-
+    /// Rect de la zona seleccionada (destino al mover una ventana).
     var selectionRect: CGRect? {
-        WindowFrameCalculator.boundingRect(of: selectedZones)
+        selectedZone?.rect
     }
 
-    func selectZone(_ id: Zone.ID, extending: Bool) {
-        if extending {
-            if selectedZoneIDs.contains(id) {
-                selectedZoneIDs.remove(id)
-            } else {
-                selectedZoneIDs.insert(id)
-            }
-        } else {
-            selectedZoneIDs = (selectedZoneIDs == [id]) ? [] : [id]
-        }
+    /// Click sobre una zona: la selecciona; click de nuevo la deselecciona.
+    func selectZone(_ id: Zone.ID) {
+        selectedZoneID = (selectedZoneID == id) ? nil : id
     }
 
     func clearSelection() {
-        selectedZoneIDs.removeAll()
+        selectedZoneID = nil
     }
 }
 
-// MARK: - Fusión de celdas
+// MARK: - Subdivisión local (columnas / filas)
 
 extension EditorViewModel {
-    /// Hay ≥2 zonas seleccionadas (se pueden fusionar).
-    var canMerge: Bool {
-        selectedZoneIDs.count >= 2
+    /// Hay una zona seleccionada sobre la que subdividir.
+    var hasSelection: Bool { selectedZoneID != nil }
+
+    /// Columnas de la franja de la zona seleccionada (1 si no está dividida en columnas).
+    var columnCount: Int {
+        guard let id = selectedZoneID else { return 1 }
+        return BSPCalculator.childCount(of: tree, forLeaf: id, axis: .vertical)
     }
 
-    /// Alguna zona seleccionada es una zona fusionada (se puede separar).
-    var canUnmerge: Bool {
-        !selectedZoneIDs.isDisjoint(with: mergedZoneIDs)
+    /// Filas de la franja de la zona seleccionada.
+    var rowCount: Int {
+        guard let id = selectedZoneID else { return 1 }
+        return BSPCalculator.childCount(of: tree, forLeaf: id, axis: .horizontal)
     }
 
-    /// Fusiona las zonas seleccionadas en una sola (su bounding box de celdas).
-    func mergeSelection() {
-        guard let union = WindowFrameCalculator.boundingRect(of: selectedZones) else { return }
-        let cells = ZoneCalculator.cells(in: bounds, lines: lines)
-            .filter { union.contains(CGPoint(x: $0.rect.midX, y: $0.rect.midY)) }
-            .map(\.cell)
-        guard cells.count > 1 else { return }
-
-        let group = Set(cells)
-        merges.removeAll { !Set($0).isDisjoint(with: group) } // quita fusiones solapadas
-        merges.append(cells)
+    /// Ajusta las columnas de la zona seleccionada (local; no toca el resto).
+    func setColumns(_ count: Int) {
+        guard let id = selectedZoneID else { return }
+        tree = BSPCalculator.setColumns(tree, forLeaf: id, to: clampDivisions(count))
         recompute()
     }
 
-    /// Separa (deshace la fusión de) las zonas fusionadas seleccionadas.
-    func unmergeSelection() {
-        let ids = selectedZoneIDs
-        merges.removeAll { group in
-            guard let anchor = group.min(by: { ($0.row, $0.col) < ($1.row, $1.col) }) else { return false }
-            return ids.contains(ZoneCalculator.zoneID(for: anchor))
-        }
+    /// Ajusta las filas de la zona seleccionada.
+    func setRows(_ count: Int) {
+        guard let id = selectedZoneID else { return }
+        tree = BSPCalculator.setRows(tree, forLeaf: id, to: clampDivisions(count))
         recompute()
     }
 
-    /// Ids de las zonas que son fruto de una fusión.
-    private var mergedZoneIDs: Set<Zone.ID> {
-        Set(merges.compactMap { group in
-            group.min(by: { ($0.row, $0.col) < ($1.row, $1.col) }).map(ZoneCalculator.zoneID(for:))
-        })
+    /// Subdivide la zona seleccionada en una rejilla `columns × rows`.
+    func subdivideSelection(columns: Int, rows: Int) {
+        guard let id = selectedZoneID else { return }
+        tree = BSPCalculator.subdivide(tree, leaf: id,
+                                       columns: clampDivisions(columns),
+                                       rows: clampDivisions(rows))
+        recompute()
+    }
+
+    /// Se puede unir: la zona seleccionada pertenece a un split (no es la raíz sola).
+    var canUnite: Bool {
+        guard selectedZoneID != nil, case .split = tree else { return false }
+        return true
+    }
+
+    /// Une (colapsa) la franja que contiene la zona seleccionada en una sola zona.
+    func uniteSelection() {
+        guard let id = selectedZoneID else { return }
+        tree = BSPCalculator.collapseParent(tree, ofLeaf: id)
+        recompute()
+    }
+
+    private func clampDivisions(_ value: Int) -> Int {
+        min(max(1, value), Self.maxDivisions)
+    }
+}
+
+// MARK: - Mover fronteras
+
+extension EditorViewModel {
+    /// Mueve una frontera al arrastrarla. `position` es la coordenada local
+    /// (`x` para verticales, `y` para horizontales).
+    func moveBoundary(_ boundary: Boundary, to position: CGFloat) {
+        let span = boundary.extent.upperBound - boundary.extent.lowerBound
+        guard span > 0 else { return }
+        let fraction = (position - boundary.extent.lowerBound) / span
+        tree = BSPCalculator.moveBoundary(tree, split: boundary.splitID, boundary: boundary.index,
+                                          toFraction: fraction, minFraction: Self.minBoundaryFraction)
+        recompute()
+    }
+}
+
+// MARK: - Persistencia / compatibilidad
+
+extension EditorViewModel {
+    /// Restaura el árbol guardado.
+    func applyTree(_ newTree: ZoneNode) {
+        tree = newTree
+        selectedZoneID = nil
+        recompute()
+    }
+
+    /// Compat con configuraciones antiguas guardadas como rejilla de zonas:
+    /// reconstruye el árbol si la partición es guillotina; si no, una sola zona.
+    func load(_ zones: [Zone]) {
+        tree = BSPCalculator.tree(fromGrid: zones, in: bounds) ?? .leaf(id: UUID())
+        selectedZoneID = nil
+        recompute()
     }
 }

@@ -54,9 +54,14 @@ final class AppModel {
         savedLayout(for: monitorID)?.grid.zones ?? []
     }
 
-    /// Layout guardado para un monitor (incluye `lines` + `merges` del editor).
+    /// Layout guardado para un monitor (incluye el árbol de subdivisión).
     func savedLayout(for monitorID: Monitor.ID) -> Layout? {
         config.monitors.first { $0.monitor.id == monitorID }?.layout
+    }
+
+    /// Árbol de subdivisión guardado para un monitor (modelo del editor BSP).
+    func savedTree(for monitorID: Monitor.ID) -> ZoneNode? {
+        savedLayout(for: monitorID)?.tree
     }
 
     /// Actualiza (upsert) el layout de un monitor **solo en memoria**.
@@ -64,10 +69,11 @@ final class AppModel {
         zones: [Zone],
         lines: [GridLine] = [],
         merges: [[GridCell]] = [],
+        tree: ZoneNode? = nil,
         for monitor: Monitor,
         layoutName: String = "Personalizado"
     ) {
-        let layout = Layout(name: layoutName, grid: ZoneGrid(zones: zones), lines: lines, merges: merges)
+        let layout = Layout(name: layoutName, grid: ZoneGrid(zones: zones), lines: lines, merges: merges, tree: tree)
         let pairing = MonitorLayout(monitor: monitor, layout: layout)
         if let index = config.monitors.firstIndex(where: { $0.monitor.id == monitor.id }) {
             config.monitors[index] = pairing
@@ -86,10 +92,11 @@ final class AppModel {
         zones: [Zone],
         lines: [GridLine] = [],
         merges: [[GridCell]] = [],
+        tree: ZoneNode? = nil,
         for monitor: Monitor,
         layoutName: String = "Personalizado"
     ) async throws {
-        setLayout(zones: zones, lines: lines, merges: merges, for: monitor, layoutName: layoutName)
+        setLayout(zones: zones, lines: lines, merges: merges, tree: tree, for: monitor, layoutName: layoutName)
         try await persist()
     }
 
@@ -99,9 +106,10 @@ final class AppModel {
         zones: [Zone],
         lines: [GridLine] = [],
         merges: [[GridCell]] = [],
+        tree: ZoneNode? = nil,
         for monitor: Monitor
     ) {
-        setLayout(zones: zones, lines: lines, merges: merges, for: monitor)
+        setLayout(zones: zones, lines: lines, merges: merges, tree: tree, for: monitor)
         autosaveTask?.cancel()
         autosaveTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))

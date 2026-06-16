@@ -8,20 +8,17 @@
 import SwiftUI
 
 /// Dibuja el área del monitor a escala con sus zonas (numeradas y seleccionables)
-/// y las líneas divisorias arrastrables, **solo por los segmentos** donde separan
-/// zonas distintas. La lógica vive en `EditorViewModel`.
+/// y los separadores arrastrables entre ellas. La lógica vive en `EditorViewModel`.
 struct MonitorPreview: View {
-    /// Nombre del espacio de coordenadas para mapear los arrastres de líneas.
+    /// Nombre del espacio de coordenadas para mapear los arrastres de separadores.
     static let coordinateSpace = "monitorPreview"
 
     let bounds: CGRect
     let zones: [Zone]
-    var lines: [GridLine] = []
-    var merges: [[GridCell]] = []
-    var selectedZoneIDs: Set<Zone.ID> = []
-    var onSelectZone: ((Zone.ID, _ extending: Bool) -> Void)? = nil
-    var onMoveLine: ((GridLine.ID, CGFloat) -> Void)? = nil
-    var onRemoveLine: ((GridLine.ID) -> Void)? = nil
+    var boundaries: [Boundary] = []
+    var selectedZoneID: Zone.ID? = nil
+    var onSelectZone: ((Zone.ID) -> Void)? = nil
+    var onMoveBoundary: ((Boundary, CGFloat) -> Void)? = nil
 
     var body: some View {
         GeometryReader { proxy in
@@ -35,10 +32,8 @@ struct MonitorPreview: View {
                 ForEach(Array(zones.enumerated()), id: \.element.id) { index, zone in
                     ZoneCell(
                         number: index + 1,
-                        isSelected: selectedZoneIDs.contains(zone.id),
-                        onSelect: onSelectZone.map { handler in
-                            { extending in handler(zone.id, extending) }
-                        }
+                        isSelected: zone.id == selectedZoneID,
+                        onSelect: onSelectZone.map { handler in { _ in handler(zone.id) } }
                     )
                     .frame(width: zone.rect.width * scaleX, height: zone.rect.height * scaleY)
                     .offset(
@@ -47,20 +42,15 @@ struct MonitorPreview: View {
                     )
                 }
 
-                if let onMoveLine {
-                    ForEach(lines) { line in
-                        let segments = ZoneCalculator.lineSegments(for: line, in: bounds, lines: lines, merges: merges)
-                        ForEach(segments.indices, id: \.self) { index in
-                            LineHandle(
-                                line: line,
-                                segment: segments[index],
-                                bounds: bounds,
-                                scaleX: scaleX,
-                                scaleY: scaleY,
-                                onMove: { onMoveLine(line.id, $0) },
-                                onRemove: { onRemoveLine?(line.id) }
-                            )
-                        }
+                if let onMoveBoundary {
+                    ForEach(boundaries) { boundary in
+                        BoundaryHandle(
+                            boundary: boundary,
+                            bounds: bounds,
+                            scaleX: scaleX,
+                            scaleY: scaleY,
+                            onMove: { onMoveBoundary(boundary, $0) }
+                        )
                     }
                 }
             }
@@ -72,24 +62,23 @@ struct MonitorPreview: View {
     }
 }
 
-#Preview("fusión 1+2 sin línea cruzándola") {
+#Preview("rejilla 2×2 con un cuadrante subdividido") {
     let bounds = CGRect(x: 0, y: 0, width: 900, height: 800)
-    let lines = [
-        GridLine(orientation: .vertical, position: 300),
-        GridLine(orientation: .vertical, position: 600),
-        GridLine(orientation: .horizontal, position: 400)
-    ]
-    let merges = [[GridCell(row: 0, col: 0), GridCell(row: 0, col: 1)]]
-    let zones = ZoneCalculator.zones(in: bounds, lines: lines, merges: merges)
+    // Cuadrante superior-derecho partido en 2 filas (subdivisión local).
+    let tree = ZoneNode.split(id: UUID(), axis: .horizontal, ratios: [1, 1], children: [
+        .split(id: UUID(), axis: .vertical, ratios: [1, 1], children: [
+            .leaf(id: UUID()),
+            .split(id: UUID(), axis: .horizontal, ratios: [1, 1], children: [.leaf(id: UUID()), .leaf(id: UUID())])
+        ]),
+        .split(id: UUID(), axis: .vertical, ratios: [1, 1], children: [.leaf(id: UUID()), .leaf(id: UUID())])
+    ])
     return MonitorPreview(
         bounds: bounds,
-        zones: zones,
-        lines: lines,
-        merges: merges,
-        onSelectZone: { _, _ in },
-        onMoveLine: { _, _ in },
-        onRemoveLine: { _ in }
+        zones: BSPCalculator.zones(of: tree, in: bounds),
+        boundaries: BSPCalculator.boundaries(of: tree, in: bounds),
+        onSelectZone: { _ in },
+        onMoveBoundary: { _, _ in }
     )
     .padding()
-    .frame(width: 520, height: 320)
+    .frame(width: 520, height: 460)
 }

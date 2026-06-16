@@ -48,6 +48,32 @@ enum BSPCalculator {
         return rects
     }
 
+    /// Fronteras interiores arrastrables del árbol evaluado sobre `rect`. Cada
+    /// una separa dos hijos de un split y solo abarca el área de ese split (por
+    /// eso una frontera "no cruza" zonas ajenas: sale gratis con el árbol).
+    static func boundaries(of node: ZoneNode, in rect: CGRect) -> [Boundary] {
+        guard case let .split(splitID, axis, ratios, children) = node else { return [] }
+        let rects = subrects(of: rect, axis: axis, ratios: ratios)
+
+        var result: [Boundary] = []
+        for index in 0..<(rects.count - 1) {
+            switch axis {
+            case .vertical:
+                result.append(Boundary(splitID: splitID, index: index, axis: axis,
+                                       position: rects[index].maxX, span: rect.minY...rect.maxY,
+                                       extent: rect.minX...rect.maxX))
+            case .horizontal:
+                result.append(Boundary(splitID: splitID, index: index, axis: axis,
+                                       position: rects[index].maxY, span: rect.minX...rect.maxX,
+                                       extent: rect.minY...rect.maxY))
+            }
+        }
+        for (child, childRect) in zip(children, rects) {
+            result += boundaries(of: child, in: childRect)
+        }
+        return result
+    }
+
     // MARK: - Transformaciones
 
     /// Subdivide la hoja `id` en una rejilla de `columns` × `rows` (local; el
@@ -109,7 +135,69 @@ enum BSPCalculator {
         }
     }
 
+    /// Nº de hijos del split padre de la hoja `id` si su eje coincide con `axis`
+    /// (= "columnas" o "filas" de su franja); en otro caso 1.
+    static func childCount(of node: ZoneNode, forLeaf id: UUID, axis: SplitAxis) -> Int {
+        func search(_ node: ZoneNode) -> Int? {
+            guard case let .split(_, splitAxis, _, children) = node else { return nil }
+            if children.contains(where: { $0.id == id }) {
+                return splitAxis == axis ? children.count : 1
+            }
+            for child in children {
+                if let found = search(child) { return found }
+            }
+            return nil
+        }
+        return search(node) ?? 1
+    }
+
+    /// Reconstruye un árbol *guillotina* a partir de zonas rectangulares (p. ej.
+    /// un layout antiguo guardado como rejilla). Devuelve `nil` si la partición
+    /// no es guillotina (no representable como árbol de cortes completos).
+    static func tree(fromGrid zones: [Zone], in bounds: CGRect, tolerance: CGFloat = 0.5) -> ZoneNode? {
+        guard !zones.isEmpty else { return nil }
+        return build(zones, in: bounds, tolerance: tolerance)
+    }
+
     // MARK: - Privado
+
+    private static func build(_ zones: [Zone], in bounds: CGRect, tolerance: CGFloat) -> ZoneNode? {
+        if zones.count == 1 { return .leaf(id: zones[0].id) }
+
+        // Corte vertical guillotina: un x interior que ninguna zona cruza.
+        let xs = Set(zones.map(\.rect.maxX)).filter { $0 > bounds.minX + tolerance && $0 < bounds.maxX - tolerance }
+        for x in xs.sorted() {
+            let left = zones.filter { $0.rect.midX < x }
+            let right = zones.filter { $0.rect.midX > x }
+            guard left.count + right.count == zones.count, !left.isEmpty, !right.isEmpty,
+                  left.allSatisfy({ $0.rect.maxX <= x + tolerance }),
+                  right.allSatisfy({ $0.rect.minX >= x - tolerance }) else { continue }
+            let leftBounds = CGRect(x: bounds.minX, y: bounds.minY, width: x - bounds.minX, height: bounds.height)
+            let rightBounds = CGRect(x: x, y: bounds.minY, width: bounds.maxX - x, height: bounds.height)
+            if let l = build(left, in: leftBounds, tolerance: tolerance),
+               let r = build(right, in: rightBounds, tolerance: tolerance) {
+                return .split(id: UUID(), axis: .vertical, ratios: [leftBounds.width, rightBounds.width], children: [l, r])
+            }
+        }
+
+        // Corte horizontal guillotina.
+        let ys = Set(zones.map(\.rect.maxY)).filter { $0 > bounds.minY + tolerance && $0 < bounds.maxY - tolerance }
+        for y in ys.sorted() {
+            let top = zones.filter { $0.rect.midY < y }
+            let bottom = zones.filter { $0.rect.midY > y }
+            guard top.count + bottom.count == zones.count, !top.isEmpty, !bottom.isEmpty,
+                  top.allSatisfy({ $0.rect.maxY <= y + tolerance }),
+                  bottom.allSatisfy({ $0.rect.minY >= y - tolerance }) else { continue }
+            let topBounds = CGRect(x: bounds.minX, y: bounds.minY, width: bounds.width, height: y - bounds.minY)
+            let bottomBounds = CGRect(x: bounds.minX, y: y, width: bounds.width, height: bounds.maxY - y)
+            if let t = build(top, in: topBounds, tolerance: tolerance),
+               let b = build(bottom, in: bottomBounds, tolerance: tolerance) {
+                return .split(id: UUID(), axis: .horizontal, ratios: [topBounds.height, bottomBounds.height], children: [t, b])
+            }
+        }
+
+        return nil
+    }
 
     private static func leaves(of node: ZoneNode, in rect: CGRect) -> [Zone] {
         switch node {

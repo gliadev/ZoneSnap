@@ -42,3 +42,21 @@ indirect enum ZoneNode: Identifiable, Codable, Sendable, Hashable {
         if case .leaf = self { true } else { false }
     }
 }
+
+/// Frontera interior arrastrable entre dos hijos de un split, situada en el
+/// espacio local del monitor. La produce `BSPCalculator.boundaries(of:in:)` y la
+/// consume la UI para dibujar y mover los separadores.
+struct Boundary: Identifiable, Sendable, Hashable {
+    let splitID: UUID
+    let index: Int
+    let axis: SplitAxis
+    /// Coordenada de la frontera: `x` para verticales, `y` para horizontales.
+    let position: CGFloat
+    /// Extensión a lo largo del split (rango en el otro eje) — el alto/ancho del separador.
+    let span: ClosedRange<CGFloat>
+    /// Rango del split en el eje de corte, para normalizar la posición a fracción.
+    let extent: ClosedRange<CGFloat>
+
+    /// Identidad estable durante un arrastre (split + índice de frontera).
+    var id: String { "\(splitID.uuidString)-\(index)" }
+}

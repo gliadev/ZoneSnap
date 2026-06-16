@@ -51,18 +51,3 @@ struct AppModelProfileTests {
         #expect(app.profiles.isEmpty)
     }
 }
-
-@Suite("EditorViewModel — aplicar perfil")
-@MainActor
-struct EditorViewModelApplyTests {
-    @Test("applyLines sustituye las líneas y recalcula la preview")
-    func applyLinesReplaces() {
-        let vm = EditorViewModel(bounds: CGRect(x: 0, y: 0, width: 1000, height: 800))
-        vm.applyLines([
-            GridLine(orientation: .vertical, position: 500),
-            GridLine(orientation: .horizontal, position: 400)
-        ])
-        #expect(vm.lines.count == 2)
-        #expect(vm.previewZones.count == 4)
-    }
-}

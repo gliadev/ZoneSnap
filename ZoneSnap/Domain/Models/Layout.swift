@@ -19,21 +19,25 @@ struct Layout: Identifiable, Codable, Sendable, Hashable {
     var grid: ZoneGrid
     var lines: [GridLine]
     var merges: [[GridCell]]
+    /// Árbol de subdivisión (modelo BSP) para reabrir el editor con la
+    /// estructura intacta. Las zonas resultantes viven en `grid.zones`.
+    var tree: ZoneNode?
 
-    init(id: UUID = UUID(), name: String, grid: ZoneGrid, lines: [GridLine] = [], merges: [[GridCell]] = []) {
+    init(id: UUID = UUID(), name: String, grid: ZoneGrid, lines: [GridLine] = [], merges: [[GridCell]] = [], tree: ZoneNode? = nil) {
         self.id = id
         self.name = name
         self.grid = grid
         self.lines = lines
         self.merges = merges
+        self.tree = tree
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, grid, lines, merges
+        case id, name, grid, lines, merges, tree
     }
 
-    /// Decodificación tolerante: los layouts antiguos sin `lines`/`merges` se
-    /// leen con esos campos vacíos en lugar de fallar.
+    /// Decodificación tolerante: los layouts antiguos sin `lines`/`merges`/`tree`
+    /// se leen con esos campos vacíos en lugar de fallar.
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -41,5 +45,6 @@ struct Layout: Identifiable, Codable, Sendable, Hashable {
         grid = try container.decode(ZoneGrid.self, forKey: .grid)
         lines = try container.decodeIfPresent([GridLine].self, forKey: .lines) ?? []
         merges = try container.decodeIfPresent([[GridCell]].self, forKey: .merges) ?? []
+        tree = try container.decodeIfPresent(ZoneNode.self, forKey: .tree)
     }
 }
