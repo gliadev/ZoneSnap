@@ -9,8 +9,15 @@ import SwiftUI
 
 /// Controles para configurar la rejilla del editor. Opera sobre el
 /// `EditorViewModel`, que es la fuente de verdad.
+///
+/// Los steppers de Columnas/Filas definen la **rejilla base** (resetean líneas y
+/// fusiones), así que se deshabilitan cuando ya hay fusiones para no romper un
+/// diseño personalizado: para retocarlo se usan Fusionar/Separar y arrastrar
+/// líneas (o "Limpiar" para empezar de cero).
 struct EditorControls: View {
     let model: EditorViewModel
+
+    private var hasMerges: Bool { !model.merges.isEmpty }
 
     var body: some View {
         HStack(spacing: 20) {
@@ -19,12 +26,14 @@ struct EditorControls: View {
                 value: Binding(get: { model.columnCount }, set: { model.setColumns($0) }),
                 in: 1...8
             )
+            .disabled(hasMerges)
 
             Stepper(
                 "Filas: \(model.rowCount)",
                 value: Binding(get: { model.rowCount }, set: { model.setRows($0) }),
                 in: 1...8
             )
+            .disabled(hasMerges)
 
             Spacer()
 

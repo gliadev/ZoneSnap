@@ -5,10 +5,21 @@
 //  Punto de entrada de la app: ventana del editor + menú de barra de estado.
 //
 
+import AppKit
 import SwiftUI
+
+/// Delegate mínimo para convertir ZoneSnap en una app de barra de estado pura
+/// (sin icono en el Dock). El editor se abre desde el menú de la barra.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApplication.shared.setActivationPolicy(.accessory)
+    }
+}
 
 @main
 struct ZoneSnapApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     @State private var app: AppModel
     @State private var snapper: WindowSnapper
     @State private var dragOverlay: DragOverlayController
