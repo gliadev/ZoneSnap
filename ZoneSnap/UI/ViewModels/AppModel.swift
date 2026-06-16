@@ -67,13 +67,11 @@ final class AppModel {
     /// Actualiza (upsert) el layout de un monitor **solo en memoria**.
     func setLayout(
         zones: [Zone],
-        lines: [GridLine] = [],
-        merges: [[GridCell]] = [],
         tree: ZoneNode? = nil,
         for monitor: Monitor,
         layoutName: String = "Personalizado"
     ) {
-        let layout = Layout(name: layoutName, grid: ZoneGrid(zones: zones), lines: lines, merges: merges, tree: tree)
+        let layout = Layout(name: layoutName, grid: ZoneGrid(zones: zones), tree: tree)
         let pairing = MonitorLayout(monitor: monitor, layout: layout)
         if let index = config.monitors.firstIndex(where: { $0.monitor.id == monitor.id }) {
             config.monitors[index] = pairing
@@ -90,13 +88,11 @@ final class AppModel {
     /// Guarda (upsert) el layout del monitor dado y persiste a disco.
     func save(
         zones: [Zone],
-        lines: [GridLine] = [],
-        merges: [[GridCell]] = [],
         tree: ZoneNode? = nil,
         for monitor: Monitor,
         layoutName: String = "Personalizado"
     ) async throws {
-        setLayout(zones: zones, lines: lines, merges: merges, tree: tree, for: monitor, layoutName: layoutName)
+        setLayout(zones: zones, tree: tree, for: monitor, layoutName: layoutName)
         try await persist()
     }
 
@@ -104,12 +100,10 @@ final class AppModel {
     /// disco tras una pausa, cancelando el guardado previo (debounce).
     func scheduleAutosave(
         zones: [Zone],
-        lines: [GridLine] = [],
-        merges: [[GridCell]] = [],
         tree: ZoneNode? = nil,
         for monitor: Monitor
     ) {
-        setLayout(zones: zones, lines: lines, merges: merges, tree: tree, for: monitor)
+        setLayout(zones: zones, tree: tree, for: monitor)
         autosaveTask?.cancel()
         autosaveTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))

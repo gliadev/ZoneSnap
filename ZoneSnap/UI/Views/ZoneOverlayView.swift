@@ -45,11 +45,9 @@ struct ZoneOverlayView: View {
 
 #Preview("overlay con span de 2 zonas") {
     let bounds = CGRect(x: 0, y: 0, width: 1920, height: 1080)
-    let zones = ZoneCalculator.zones(in: bounds, lines: [
-        GridLine(orientation: .vertical, position: 640),
-        GridLine(orientation: .vertical, position: 1280),
-        GridLine(orientation: .horizontal, position: 540)
-    ])
+    let root = ZoneNode.leaf(id: UUID())
+    let tree = BSPCalculator.subdivide(root, leaf: root.id, columns: 3, rows: 2)
+    let zones = BSPCalculator.zones(of: tree, in: bounds)
     let model = OverlayModel()
     model.configure(bounds: bounds, zones: zones)
     model.highlightedZoneIDs = [zones[4].id, zones[5].id]

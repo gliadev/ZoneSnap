@@ -16,9 +16,7 @@ struct OverlayModelTests {
 
     /// Overlay con 2 columnas (línea vertical en x=500).
     private func twoColumnModel() -> OverlayModel {
-        let zones = ZoneCalculator.zones(in: bounds, lines: [
-            GridLine(orientation: .vertical, position: 500)
-        ])
+        let zones = TestZones.grid(bounds, columns: 2, rows: 1)
         let model = OverlayModel()
         model.configure(bounds: bounds, zones: zones)
         return model
@@ -50,10 +48,7 @@ struct OverlayModelTests {
 
     @Test("sobre la cruz de 4 zonas se resaltan las 4")
     func spanFourZones() {
-        let zones = ZoneCalculator.zones(in: bounds, lines: [
-            GridLine(orientation: .vertical, position: 500),
-            GridLine(orientation: .horizontal, position: 400)
-        ])
+        let zones = TestZones.grid(bounds, columns: 2, rows: 2)
         let model = OverlayModel()
         model.configure(bounds: bounds, zones: zones)
         model.highlightZones(at: CGPoint(x: 500, y: 400))
