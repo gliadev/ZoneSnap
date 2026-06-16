@@ -15,6 +15,8 @@ struct OnboardingPage: Identifiable, Sendable, Hashable {
         case subdivide
         /// Un separador se mueve adelante y atrás (redimensionar).
         case resize
+        /// Una ventana salta y se acopla a las zonas (snapping).
+        case move
     }
 
     /// Qué muestra la página, además del texto.
@@ -61,9 +63,9 @@ extension OnboardingPage {
         OnboardingPage(
             id: 3,
             title: "Mueve ventanas al instante",
-            message: "Acopla la ventana activa de tres formas: con el botón “Mover ventana activa aquí”, manteniendo Mayús + Control (⇧⌃) mientras la arrastras, o por teclado — Control + Opción (⌃⌥) y un número del 1 al 9 para ir a una zona, o Control + Opción y ← / → para navegar.",
+            message: "Acopla la ventana activa con el botón, manteniendo Mayús + Control (⇧⌃) y arrastrando, o por teclado: Control + Opción (⌃⌥) y un número (1–9) o las flechas ← / →.",
             symbol: "macwindow.on.rectangle",
-            kind: .info
+            kind: .demo(.move)
         ),
         OnboardingPage(
             id: 4,
