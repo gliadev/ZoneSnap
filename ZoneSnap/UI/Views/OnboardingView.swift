@@ -78,8 +78,8 @@ private struct OnboardingPageContent: View {
                 .fixedSize(horizontal: false, vertical: true)
 
             switch page.kind {
-            case .demo:
-                demo
+            case let .demo(demoKind):
+                OnboardingDemo(kind: demoKind)
             case .permission:
                 Button("Conceder permiso de Accesibilidad", systemImage: "lock.open", action: onRequestPermission)
                     .buttonStyle(.borderedProminent)
@@ -87,14 +87,6 @@ private struct OnboardingPageContent: View {
                 EmptyView()
             }
         }
-    }
-
-    private var demo: some View {
-        let bounds = CGRect(x: 0, y: 0, width: 480, height: 300)
-        let root = ZoneNode.leaf(id: UUID())
-        let tree = BSPCalculator.subdivide(root, leaf: root.id, columns: 3, rows: 2)
-        return MonitorPreview(bounds: bounds, zones: BSPCalculator.zones(of: tree, in: bounds))
-            .frame(height: 150)
     }
 }
 

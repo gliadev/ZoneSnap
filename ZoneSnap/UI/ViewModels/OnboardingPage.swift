@@ -9,12 +9,20 @@ import Foundation
 
 /// Una página del tutorial de bienvenida: texto + símbolo + tipo de contenido.
 struct OnboardingPage: Identifiable, Sendable, Hashable {
+    /// Animación de demostración que acompaña a una página `.demo`.
+    enum DemoKind: Sendable, Hashable {
+        /// Una zona se subdivide sola (el resto no se toca).
+        case subdivide
+        /// Un separador se mueve adelante y atrás (redimensionar).
+        case resize
+    }
+
     /// Qué muestra la página, además del texto.
     enum Kind: Sendable, Hashable {
         /// Solo icono + texto.
         case info
-        /// Incluye una mini-demo visual de zonas.
-        case demo
+        /// Incluye una mini-demo animada de zonas.
+        case demo(DemoKind)
         /// Ofrece conceder el permiso de Accesibilidad.
         case permission
     }
@@ -41,19 +49,19 @@ extension OnboardingPage {
             title: "Crea tus zonas",
             message: "Selecciona una zona y súbela en Columnas o Filas para partirla. Solo se divide esa: el resto del diseño no se toca.",
             symbol: "square.grid.3x3",
-            kind: .demo
+            kind: .demo(.subdivide)
         ),
         OnboardingPage(
             id: 2,
             title: "Ajusta a tu gusto",
             message: "Arrastra los separadores para redimensionar las zonas. El botón “Unir” vuelve a juntarlas, y “Limpiar” empieza de cero.",
             symbol: "arrow.left.and.right.square",
-            kind: .demo
+            kind: .demo(.resize)
         ),
         OnboardingPage(
             id: 3,
             title: "Mueve ventanas al instante",
-            message: "Usa el botón, mantén ⇧⌃ y arrastra una ventana, o con el teclado: ⌃⌥1…9 para ir a una zona y ⌃⌥←/→ para navegar.",
+            message: "Acopla la ventana activa de tres formas: con el botón “Mover ventana activa aquí”, manteniendo Mayús + Control (⇧⌃) mientras la arrastras, o por teclado — Control + Opción (⌃⌥) y un número del 1 al 9 para ir a una zona, o Control + Opción y ← / → para navegar.",
             symbol: "macwindow.on.rectangle",
             kind: .info
         ),
