@@ -21,42 +21,62 @@ struct OnboardingDemo: View {
     }
 }
 
-/// Anima un cambio en el árbol de zonas: `.subdivide` (una zona se parte sola sin
-/// tocar el resto) o `.resize` (un separador se mueve). Los árboles se fijan en
-/// `init` para que las zonas conserven identidad y la transición se anime.
+/// Recorre en bucle una secuencia de árboles de zonas:
+/// `.subdivide` muestra cómo se *crean* (1 → 2 columnas → 2×2 → subdividir una);
+/// `.resize` mueve el separador de columnas y luego el de filas (mismos ids, así
+/// el redimensionado se anima suave).
 private struct ZoneTreeDemo: View {
     private let bounds = CGRect(x: 0, y: 0, width: 480, height: 300)
-    private let treeA: ZoneNode
-    private let treeB: ZoneNode
+    private let frames: [ZoneNode]
 
-    @State private var showB = false
+    @State private var index = 0
 
     init(kind: OnboardingPage.DemoKind) {
-        switch kind {
-        case .resize:
-            let root = ZoneNode.leaf(id: UUID())
-            let split = BSPCalculator.subdivide(root, leaf: root.id, columns: 2, rows: 1)
-            treeA = BSPCalculator.moveBoundary(split, split: split.id, boundary: 0, toFraction: 0.32)
-            treeB = BSPCalculator.moveBoundary(split, split: split.id, boundary: 0, toFraction: 0.68)
-        case .subdivide, .move:
-            let root = ZoneNode.leaf(id: UUID())
-            let grid = BSPCalculator.subdivide(root, leaf: root.id, columns: 2, rows: 2)
-            let target = BSPCalculator.zones(of: grid, in: bounds).last?.id ?? root.id
-            treeA = grid
-            treeB = BSPCalculator.setColumns(grid, forLeaf: target, to: 2)
-        }
+        frames = ZoneTreeDemo.frames(for: kind, in: bounds)
     }
 
     var body: some View {
-        MonitorPreview(bounds: bounds, zones: BSPCalculator.zones(of: showB ? treeB : treeA, in: bounds))
+        let tree = frames[index % frames.count]
+        MonitorPreview(bounds: bounds, zones: BSPCalculator.zones(of: tree, in: bounds))
             .frame(height: 150)
-            .animation(.easeInOut(duration: 0.6), value: showB)
+            .animation(.easeInOut(duration: 0.55), value: index)
             .task {
                 while !Task.isCancelled {
-                    try? await Task.sleep(for: .seconds(1.3))
-                    showB.toggle()
+                    try? await Task.sleep(for: .seconds(1.2))
+                    index += 1
                 }
             }
+    }
+
+    private static func frames(for kind: OnboardingPage.DemoKind, in bounds: CGRect) -> [ZoneNode] {
+        switch kind {
+        case .subdivide:
+            let root = ZoneNode.leaf(id: UUID())
+            let columns = BSPCalculator.subdivide(root, leaf: root.id, columns: 2, rows: 1)
+            let grid = BSPCalculator.subdivide(root, leaf: root.id, columns: 2, rows: 2)
+            let target = BSPCalculator.zones(of: grid, in: bounds).last?.id ?? root.id
+            let nested = BSPCalculator.setColumns(grid, forLeaf: target, to: 2)
+            return [root, columns, grid, nested]
+
+        case .resize:
+            let topID = UUID(), bottomID = UUID(), rootID = UUID()
+            let top = ZoneNode.split(id: topID, axis: .vertical, ratios: [1, 1],
+                                     children: [.leaf(id: UUID()), .leaf(id: UUID())])
+            let bottom = ZoneNode.split(id: bottomID, axis: .vertical, ratios: [1, 1],
+                                        children: [.leaf(id: UUID()), .leaf(id: UUID())])
+            let base = ZoneNode.split(id: rootID, axis: .horizontal, ratios: [1, 1], children: [top, bottom])
+            // Columnas desiguales (mueve el separador vertical de ambas filas).
+            let wideColumns = BSPCalculator.moveBoundary(
+                BSPCalculator.moveBoundary(base, split: topID, boundary: 0, toFraction: 0.66),
+                split: bottomID, boundary: 0, toFraction: 0.66
+            )
+            // Filas desiguales (mueve el separador horizontal).
+            let tallRows = BSPCalculator.moveBoundary(base, split: rootID, boundary: 0, toFraction: 0.66)
+            return [base, wideColumns, base, tallRows]
+
+        case .move:
+            return [.leaf(id: UUID())]
+        }
     }
 }
 
@@ -77,7 +97,7 @@ private struct WindowSnapDemo: View {
         GeometryReader { proxy in
             let scaleX = proxy.size.width / bounds.width
             let scaleY = proxy.size.height / bounds.height
-            let target = zones.isEmpty ? .zero : zones[index].rect
+            let target = zones.isEmpty ? .zero : zones[index % max(zones.count, 1)].rect
 
             ZStack(alignment: .topLeading) {
                 ForEach(zones) { zone in
@@ -97,7 +117,7 @@ private struct WindowSnapDemo: View {
         .task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1.1))
-                if !zones.isEmpty { index = (index + 1) % zones.count }
+                index += 1
             }
         }
     }
@@ -116,7 +136,7 @@ private struct WindowSnapDemo: View {
     }
 }
 
-#Preview("subdividir") {
+#Preview("crear zonas") {
     OnboardingDemo(kind: .subdivide).padding().frame(width: 320)
 }
 
