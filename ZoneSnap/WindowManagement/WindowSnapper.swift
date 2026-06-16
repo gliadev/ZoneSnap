@@ -71,6 +71,11 @@ final class WindowSnapper {
         }
     }
 
+    /// Pide el permiso de Accesibilidad (lo usa el tutorial de bienvenida).
+    func requestAccessibilityAccess() {
+        authorizer.requestAccess()
+    }
+
     /// Origen top-left global del monitor, buscando su `NSScreen` por display UUID
     /// y convirtiendo desde coordenadas AppKit (bottom-left).
     static func globalTopLeftOrigin(of monitor: Monitor) -> CGPoint? {

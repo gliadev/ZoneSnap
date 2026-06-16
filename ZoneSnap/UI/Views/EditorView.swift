@@ -21,6 +21,9 @@ struct EditorView: View {
     @State private var profileName = ""
     @State private var showingNamePrompt = false
 
+    @State private var onboarding = OnboardingModel()
+    @State private var showOnboarding = false
+
     var body: some View {
         @Bindable var app = app
 
@@ -37,6 +40,12 @@ struct EditorView: View {
                 profileMenu(app: app)
 
                 Spacer()
+
+                Button("¿Cómo funciona?", systemImage: "questionmark.circle") {
+                    onboarding.restart()
+                    showOnboarding = true
+                }
+                .buttonStyle(.borderless)
             }
 
             MonitorPreview(
@@ -83,6 +92,7 @@ struct EditorView: View {
             dragOverlay.start()
             shortcuts.start()
             configureEditor(for: app.selectedMonitorID)
+            showOnboarding = onboarding.shouldPresentOnLaunch
         }
         .onChange(of: app.selectedMonitorID) { oldID, newID in
             if let oldMonitor = app.monitors.first(where: { $0.id == oldID }) {
@@ -101,6 +111,13 @@ struct EditorView: View {
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("Guarda la distribución actual como perfil reutilizable en cualquier monitor.")
+        }
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingView(
+                model: onboarding,
+                onRequestPermission: { snapper.requestAccessibilityAccess() },
+                onFinish: { showOnboarding = false }
+            )
         }
     }
 
