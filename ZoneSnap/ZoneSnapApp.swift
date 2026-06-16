@@ -23,6 +23,7 @@ struct ZoneSnapApp: App {
     @State private var app: AppModel
     @State private var snapper: WindowSnapper
     @State private var dragOverlay: DragOverlayController
+    @State private var shortcuts: KeyboardShortcutController
 
     init() {
         let appModel = AppModel(
@@ -30,14 +31,16 @@ struct ZoneSnapApp: App {
             monitorProvider: NSScreenMonitorProvider()
         )
         let mover = AXWindowMover()
+        let windowSnapper = WindowSnapper(mover: mover, authorizer: SystemAccessibilityAuthorizer())
         _app = State(initialValue: appModel)
-        _snapper = State(initialValue: WindowSnapper(mover: mover, authorizer: SystemAccessibilityAuthorizer()))
+        _snapper = State(initialValue: windowSnapper)
         _dragOverlay = State(initialValue: DragOverlayController(app: appModel, mover: mover))
+        _shortcuts = State(initialValue: KeyboardShortcutController(app: appModel, snapper: windowSnapper, mover: mover))
     }
 
     var body: some Scene {
         Window("ZoneSnap — Editor", id: ZoneSnapWindow.editor) {
-            EditorView(app: app, snapper: snapper, dragOverlay: dragOverlay)
+            EditorView(app: app, snapper: snapper, dragOverlay: dragOverlay, shortcuts: shortcuts)
         }
         .windowResizability(.contentMinSize)
 

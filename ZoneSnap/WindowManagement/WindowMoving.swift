@@ -15,6 +15,10 @@ import CoreGraphics
 protocol WindowMoving: Sendable {
     /// Mueve la ventana enfocada de la app con el PID dado al frame indicado.
     func moveFocusedWindow(ofPID pid: pid_t, to frame: CGRect) throws
+
+    /// Frame actual de la ventana enfocada de la app, en coordenadas globales
+    /// top-left. Útil para saber en qué zona está antes de navegar.
+    func focusedWindowFrame(ofPID pid: pid_t) throws -> CGRect
 }
 
 /// Errores al mover ventanas vía Accessibility API.

@@ -15,6 +15,7 @@ struct EditorView: View {
     let app: AppModel
     let snapper: WindowSnapper
     let dragOverlay: DragOverlayController
+    let shortcuts: KeyboardShortcutController
     @State private var editor = EditorViewModel(bounds: CGRect(x: 0, y: 0, width: 1920, height: 1080))
 
     @State private var profileName = ""
@@ -80,6 +81,7 @@ struct EditorView: View {
             await app.start()
             snapper.startObservingActiveApp()
             dragOverlay.start()
+            shortcuts.start()
             configureEditor(for: app.selectedMonitorID)
         }
         .onChange(of: app.selectedMonitorID) { oldID, newID in
@@ -138,9 +140,10 @@ struct EditorView: View {
     }
 
     private var hint: String {
-        editor.hasSelection
-            ? "Columnas/Filas subdividen la zona seleccionada · arrastra los separadores para redimensionar · Unir colapsa la división · ⇧⌃ + arrastrar ventana para acoplar"
-            : "Selecciona una zona para subdividirla en columnas/filas · ⇧⌃ + arrastrar ventana para acoplar"
+        let base = editor.hasSelection
+            ? "Columnas/Filas subdividen la zona seleccionada · arrastra los separadores para redimensionar · Unir colapsa la división"
+            : "Selecciona una zona para subdividirla en columnas/filas"
+        return base + " · ⇧⌃ + arrastrar ventana para acoplar · ⌃⌥1…9 mover a zona · ⌃⌥←/→ navegar zonas"
     }
 
     /// Ajusta el editor al monitor seleccionado y restaura su árbol guardado
@@ -162,5 +165,5 @@ struct EditorView: View {
 }
 
 #Preview {
-    EditorView(app: .preview, snapper: .preview, dragOverlay: .preview)
+    EditorView(app: .preview, snapper: .preview, dragOverlay: .preview, shortcuts: .preview)
 }

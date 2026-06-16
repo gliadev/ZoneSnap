@@ -38,6 +38,36 @@ struct AXWindowMover: WindowMoving {
         try set(sizeValue, attribute: kAXSizeAttribute, on: window)
     }
 
+    func focusedWindowFrame(ofPID pid: pid_t) throws -> CGRect {
+        let app = AXUIElementCreateApplication(pid)
+
+        var focused: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(app, kAXFocusedWindowAttribute as CFString, &focused) == .success,
+            let windowRef = focused
+        else {
+            throw WindowMoverError.noFocusedWindow
+        }
+        let window = windowRef as! AXUIElement
+
+        var positionRef: CFTypeRef?
+        var sizeRef: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(window, kAXPositionAttribute as CFString, &positionRef) == .success,
+            AXUIElementCopyAttributeValue(window, kAXSizeAttribute as CFString, &sizeRef) == .success,
+            let positionValue = positionRef, CFGetTypeID(positionValue) == AXValueGetTypeID(),
+            let sizeValue = sizeRef, CFGetTypeID(sizeValue) == AXValueGetTypeID()
+        else {
+            throw WindowMoverError.axFailure(.failure)
+        }
+
+        var origin = CGPoint.zero
+        var size = CGSize.zero
+        AXValueGetValue(positionValue as! AXValue, .cgPoint, &origin)
+        AXValueGetValue(sizeValue as! AXValue, .cgSize, &size)
+        return CGRect(origin: origin, size: size)
+    }
+
     /// Fija un `AXValue` ya construido en un atributo de la ventana.
     private func set(_ value: AXValue, attribute: String, on element: AXUIElement) throws {
         let error = AXUIElementSetAttributeValue(element, attribute as CFString, value)
