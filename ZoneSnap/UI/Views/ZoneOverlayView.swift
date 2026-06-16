@@ -36,6 +36,7 @@ struct ZoneOverlayView: View {
                         )
                 }
             }
+            .animation(.easeOut(duration: 0.12), value: model.highlightedZoneIDs)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
