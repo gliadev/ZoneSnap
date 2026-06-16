@@ -41,7 +41,9 @@ struct ZoneConfig: Codable, Sendable, Hashable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         version = try container.decodeIfPresent(Int.self, forKey: .version) ?? ZoneConfig.currentVersion
         monitors = try container.decodeIfPresent([MonitorLayout].self, forKey: .monitors) ?? []
-        profiles = try container.decodeIfPresent([LayoutProfile].self, forKey: .profiles) ?? []
+        // Tolerante también al cambio de forma de los perfiles (líneas → árbol):
+        // perfiles antiguos no decodificables se descartan en vez de romper la carga.
+        profiles = (try? container.decodeIfPresent([LayoutProfile].self, forKey: .profiles)) ?? []
     }
 }
 

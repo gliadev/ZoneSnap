@@ -17,6 +17,9 @@ struct EditorView: View {
     let dragOverlay: DragOverlayController
     @State private var editor = EditorViewModel(bounds: CGRect(x: 0, y: 0, width: 1920, height: 1080))
 
+    @State private var profileName = ""
+    @State private var showingNamePrompt = false
+
     var body: some View {
         @Bindable var app = app
 
@@ -29,6 +32,8 @@ struct EditorView: View {
                 }
                 .pickerStyle(.menu)
                 .fixedSize()
+
+                profileMenu(app: app)
 
                 Spacer()
             }
@@ -88,6 +93,48 @@ struct EditorView: View {
                 app.scheduleAutosave(zones: editor.previewZones, tree: editor.tree, for: monitor)
             }
         }
+        .alert("Guardar perfil", isPresented: $showingNamePrompt) {
+            TextField("Nombre (p. ej. dev)", text: $profileName)
+            Button("Guardar", action: saveProfile)
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("Guarda la distribución actual como perfil reutilizable en cualquier monitor.")
+        }
+    }
+
+    private func profileMenu(app: AppModel) -> some View {
+        Menu("Perfil", systemImage: "rectangle.3.group") {
+            if app.profiles.isEmpty {
+                Text("Sin perfiles guardados")
+            } else {
+                ForEach(app.profiles) { profile in
+                    Button(profile.name) { editor.applyTree(profile.tree) }
+                }
+                Divider()
+                Menu("Borrar perfil") {
+                    ForEach(app.profiles) { profile in
+                        Button(profile.name, role: .destructive) { deleteProfile(profile) }
+                    }
+                }
+            }
+            Divider()
+            Button("Guardar como perfil…", systemImage: "plus") {
+                profileName = ""
+                showingNamePrompt = true
+            }
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+    }
+
+    private func saveProfile() {
+        let name = profileName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        Task { try? await app.saveProfile(name: name, tree: editor.tree) }
+    }
+
+    private func deleteProfile(_ profile: LayoutProfile) {
+        Task { try? await app.deleteProfile(profile.id) }
     }
 
     private var hint: String {

@@ -126,12 +126,11 @@ extension AppModel {
         config.profiles
     }
 
-    func saveProfile(name: String, lines: [GridLine], bounds: CGRect) async throws {
-        let normalized = LayoutProfileMapper.normalize(lines, in: bounds)
+    func saveProfile(name: String, tree: ZoneNode) async throws {
         if let index = config.profiles.firstIndex(where: { $0.name == name }) {
-            config.profiles[index].lines = normalized
+            config.profiles[index].tree = tree
         } else {
-            config.profiles.append(LayoutProfile(name: name, lines: normalized))
+            config.profiles.append(LayoutProfile(name: name, tree: tree))
         }
         try await persist()
     }
