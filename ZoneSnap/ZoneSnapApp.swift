@@ -8,11 +8,36 @@
 import AppKit
 import SwiftUI
 
-/// Delegate mínimo para convertir ZoneSnap en una app de barra de estado pura
-/// (sin icono en el Dock). El editor se abre desde el menú de la barra.
+/// Delegate de la app: crea los servicios y los arranca al lanzar (no al abrir el
+/// editor), de modo que los atajos y el drag funcionen aunque el editor esté
+/// cerrado. Además fija la app como accesoria (sin icono en el Dock).
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    let app: AppModel
+    let snapper: WindowSnapper
+    let dragOverlay: DragOverlayController
+    let shortcuts: KeyboardShortcutController
+
+    override init() {
+        let appModel = AppModel(
+            repository: LocalZoneConfigRepository(),
+            monitorProvider: NSScreenMonitorProvider()
+        )
+        let mover = AXWindowMover()
+        let windowSnapper = WindowSnapper(mover: mover, authorizer: SystemAccessibilityAuthorizer())
+        app = appModel
+        snapper = windowSnapper
+        dragOverlay = DragOverlayController(app: appModel, mover: mover)
+        shortcuts = KeyboardShortcutController(app: appModel, snapper: windowSnapper, mover: mover)
+        super.init()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.accessory)
+        snapper.startObservingActiveApp()
+        dragOverlay.start()
+        shortcuts.start()
+        Task { await app.start() }
     }
 }
 
@@ -20,27 +45,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct ZoneSnapApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
-    @State private var app: AppModel
-    @State private var snapper: WindowSnapper
-    @State private var dragOverlay: DragOverlayController
-    @State private var shortcuts: KeyboardShortcutController
-
-    init() {
-        let appModel = AppModel(
-            repository: LocalZoneConfigRepository(),
-            monitorProvider: NSScreenMonitorProvider()
-        )
-        let mover = AXWindowMover()
-        let windowSnapper = WindowSnapper(mover: mover, authorizer: SystemAccessibilityAuthorizer())
-        _app = State(initialValue: appModel)
-        _snapper = State(initialValue: windowSnapper)
-        _dragOverlay = State(initialValue: DragOverlayController(app: appModel, mover: mover))
-        _shortcuts = State(initialValue: KeyboardShortcutController(app: appModel, snapper: windowSnapper, mover: mover))
-    }
-
     var body: some Scene {
         Window("ZoneSnap — Editor", id: ZoneSnapWindow.editor) {
-            EditorView(app: app, snapper: snapper, dragOverlay: dragOverlay, shortcuts: shortcuts)
+            EditorView(
+                app: appDelegate.app,
+                snapper: appDelegate.snapper,
+                dragOverlay: appDelegate.dragOverlay,
+                shortcuts: appDelegate.shortcuts
+            )
         }
         .windowResizability(.contentMinSize)
 

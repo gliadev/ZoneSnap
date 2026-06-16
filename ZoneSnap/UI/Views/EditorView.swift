@@ -87,10 +87,8 @@ struct EditorView: View {
         .frame(minWidth: 600, minHeight: 540)
         .navigationTitle("Editor de zonas")
         .task {
-            await app.start()
-            snapper.startObservingActiveApp()
-            dragOverlay.start()
-            shortcuts.start()
+            // Los servicios (monitores, atajos, drag) los arranca AppDelegate al
+            // lanzar la app; aquí solo configuramos la vista del editor.
             configureEditor(for: app.selectedMonitorID)
             showOnboarding = onboarding.shouldPresentOnLaunch
         }
