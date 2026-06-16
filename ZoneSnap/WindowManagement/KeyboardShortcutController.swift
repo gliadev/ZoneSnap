@@ -61,19 +61,35 @@ final class KeyboardShortcutController {
     }
 
     private func perform(_ action: ShortcutAction) {
-        guard let monitor = app.selectedMonitor else { return }
+        let windowFrame = snapper.lastActiveOtherPID.flatMap { try? mover.focusedWindowFrame(ofPID: $0) }
+        guard let monitor = targetMonitor(windowFrame: windowFrame) else { return }
         let zones = app.savedZones(for: monitor.id)
         guard !zones.isEmpty else { return }
-        let current = currentZoneID(in: zones, on: monitor)
+        let current = currentZoneID(windowFrame: windowFrame, in: zones, on: monitor)
         guard let destination = ZoneNavigator.destination(for: action, in: zones, current: current) else { return }
         snapper.snap(localRect: destination.rect, on: monitor)
     }
 
-    /// Zona donde está ahora la ventana activa (por el centro de su frame).
-    private func currentZoneID(in zones: [Zone], on monitor: Monitor) -> Zone.ID? {
+    /// Monitor donde está la ventana activa (por su centro); si no se puede
+    /// determinar, el seleccionado en el editor.
+    private func targetMonitor(windowFrame: CGRect?) -> Monitor? {
+        guard let frame = windowFrame else { return app.selectedMonitor }
+        let center = CGPoint(x: frame.midX, y: frame.midY)
+        let rects = app.monitors.compactMap { monitor -> (id: Monitor.ID, frame: CGRect)? in
+            guard let origin = WindowSnapper.globalTopLeftOrigin(of: monitor) else { return nil }
+            return (monitor.id, CGRect(origin: origin, size: monitor.resolution))
+        }
+        if let id = MonitorLocator.monitor(containing: center, in: rects) {
+            return app.monitors.first { $0.id == id }
+        }
+        return app.selectedMonitor
+    }
+
+    /// Zona donde está ahora la ventana activa (por el centro de su frame) en el
+    /// monitor dado.
+    private func currentZoneID(windowFrame: CGRect?, in zones: [Zone], on monitor: Monitor) -> Zone.ID? {
         guard
-            let pid = snapper.lastActiveOtherPID,
-            let frame = try? mover.focusedWindowFrame(ofPID: pid),
+            let frame = windowFrame,
             let origin = WindowSnapper.globalTopLeftOrigin(of: monitor)
         else { return nil }
 
