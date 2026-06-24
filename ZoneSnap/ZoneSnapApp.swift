@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let snapper: WindowSnapper
     let dragOverlay: DragOverlayController
     let shortcuts: KeyboardShortcutController
+    let launchAtLogin: LaunchAtLoginModel
 
     override init() {
         let appModel = AppModel(
@@ -29,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         snapper = windowSnapper
         dragOverlay = DragOverlayController(app: appModel, mover: mover)
         shortcuts = KeyboardShortcutController(app: appModel, snapper: windowSnapper, mover: mover)
+        launchAtLogin = LaunchAtLoginModel(manager: SystemLoginItemManager())
         super.init()
     }
 
@@ -57,7 +59,7 @@ struct ZoneSnapApp: App {
         .windowResizability(.contentMinSize)
 
         MenuBarExtra("ZoneSnap", systemImage: "rectangle.split.2x2") {
-            MenubarView()
+            MenubarView(launchAtLogin: appDelegate.launchAtLogin)
         }
     }
 }

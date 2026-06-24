@@ -29,3 +29,15 @@ protocol AccessibilityAuthorizing: Sendable {
     @discardableResult
     func requestAccess() -> Bool
 }
+
+/// Puerto: alta/baja de ZoneSnap como ítem de inicio de sesión (arrancar al
+/// encender el equipo). Aislado al main actor: solo se usa desde la UI.
+@MainActor
+protocol LoginItemManaging {
+    /// `true` si la app está registrada para arrancar al iniciar sesión.
+    var isEnabled: Bool { get }
+
+    /// Registra (o da de baja) la app como ítem de inicio. Puede lanzar si el
+    /// sistema rechaza el cambio (p. ej. requiere aprobación del usuario).
+    func setEnabled(_ enabled: Bool) throws
+}

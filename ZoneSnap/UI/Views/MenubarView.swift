@@ -7,9 +7,10 @@
 
 import SwiftUI
 
-/// Contenido del `MenuBarExtra`: abrir el editor y salir.
+/// Contenido del `MenuBarExtra`: abrir el editor, arrancar al inicio y salir.
 struct MenubarView: View {
     @Environment(\.openWindow) private var openWindow
+    @Bindable var launchAtLogin: LaunchAtLoginModel
 
     var body: some View {
         Button("Abrir editor", systemImage: "rectangle.split.2x2") {
@@ -18,10 +19,21 @@ struct MenubarView: View {
 
         Divider()
 
+        Toggle("Arrancar al iniciar sesión", isOn: launchAtLoginBinding)
+
+        Divider()
+
         Button("Salir de ZoneSnap", systemImage: "power") {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    private var launchAtLoginBinding: Binding<Bool> {
+        Binding(
+            get: { launchAtLogin.isEnabled },
+            set: { launchAtLogin.setEnabled($0) }
+        )
     }
 }
 
