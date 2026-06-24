@@ -79,6 +79,12 @@ extension EditorViewModel {
     func clearSelection() {
         selectedZoneID = nil
     }
+
+    private func selectFirstZoneIn(_ rect: CGRect) {
+        if let zone = previewZones.first(where: { $0.rect.intersects(rect) || rect.contains($0.rect) }) {
+            selectedZoneID = zone.id
+        }
+    }
 }
 
 // MARK: - Subdivisión local (columnas / filas)
@@ -101,16 +107,18 @@ extension EditorViewModel {
 
     /// Ajusta las columnas de la zona seleccionada (local; no toca el resto).
     func setColumns(_ count: Int) {
-        guard let id = selectedZoneID else { return }
+        guard let id = selectedZoneID, let prevRect = selectedZone?.rect else { return }
         tree = BSPCalculator.setColumns(tree, forLeaf: id, to: clampDivisions(count))
         recompute()
+        selectFirstZoneIn(prevRect)
     }
 
     /// Ajusta las filas de la zona seleccionada.
     func setRows(_ count: Int) {
-        guard let id = selectedZoneID else { return }
+        guard let id = selectedZoneID, let prevRect = selectedZone?.rect else { return }
         tree = BSPCalculator.setRows(tree, forLeaf: id, to: clampDivisions(count))
         recompute()
+        selectFirstZoneIn(prevRect)
     }
 
     /// Subdivide la zona seleccionada en una rejilla `columns × rows`.

@@ -61,9 +61,9 @@ struct EditorViewModelTests {
         let vm = makeVM()
         vm.selectZone(vm.previewZones[0].id)
         vm.setColumns(3)
-        vm.selectZone(vm.previewZones[0].id)
         #expect(vm.columnCount == 3)
         #expect(vm.rowCount == 1)
+        #expect(vm.hasSelection)
     }
 
     @Test("unir colapsa la franja de la selección")
