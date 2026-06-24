@@ -21,3 +21,6 @@ build/
 
 # Temporales del proyecto
 .tmp/
+
+# Artefactos de distribución (DMG generados)
+dist/
