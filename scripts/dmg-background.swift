@@ -6,7 +6,8 @@
 //  título y una flecha que invita a arrastrar la app a /Applications.
 //
 //  Uso:  swift dmg-background.swift <salida.png>
-//  Lienzo: 1200×800 (= 600×400 lógicos a @2x, nítido en pantallas Retina).
+//  Lienzo: 600×400 px (Finder trata el PNG como puntos 1:1, sin densidad @2x),
+//  por lo que debe coincidir exactamente con el área de contenido de la ventana.
 //
 
 import AppKit
@@ -15,7 +16,7 @@ import Foundation
 
 // MARK: - Parámetros
 
-let scale: CGFloat = 2
+let scale: CGFloat = 1
 let logicalSize = CGSize(width: 600, height: 400)
 let pixelSize = CGSize(width: logicalSize.width * scale, height: logicalSize.height * scale)
 
@@ -86,9 +87,9 @@ draw("Arrastra el icono a la carpeta Aplicaciones",
 
 // MARK: - Flecha (entre los dos iconos, a su misma altura)
 
-// Los iconos se sitúan (vía AppleScript) en y lógico ≈ 205 desde arriba.
-// Aquí el origen es abajo-izquierda → y = alto − 205.
-let arrowY = logicalSize.height - 205
+// Los iconos se sitúan (vía AppleScript) en y lógico ≈ 215 desde arriba.
+// Aquí el origen es abajo-izquierda → y = alto − 215.
+let arrowY = logicalSize.height - 215
 let arrowStart = CGPoint(x: 245, y: arrowY)
 let arrowEnd = CGPoint(x: 355, y: arrowY)
 let headLength: CGFloat = 22
