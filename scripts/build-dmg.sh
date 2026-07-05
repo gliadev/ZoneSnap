@@ -9,6 +9,10 @@
 # Uso:   scripts/build-dmg.sh [version]
 #        version → opcional, p. ej. 1.0.0 (por defecto: la del proyecto o "dev")
 #
+# Firma: usa la identidad de SIGN_IDENTITY (por defecto la de desarrollo de
+# Adolfo). Una firma estable es imprescindible para que el permiso de
+# Accesibilidad persista entre reinstalaciones. Para no firmar: SIGN_IDENTITY=""
+#
 set -euo pipefail
 
 # --- Rutas --------------------------------------------------------------------
@@ -18,6 +22,9 @@ PROJECT="$PROJECT_ROOT/ZoneSnap.xcodeproj"
 SCHEME="ZoneSnap"
 APP_NAME="ZoneSnap"
 VERSION="${1:-dev}"
+
+# Identidad de firma (override con la variable de entorno SIGN_IDENTITY).
+SIGN_IDENTITY="${SIGN_IDENTITY-Apple Development: Adolfo Gomez (4WM754T5R6)}"
 
 BUILD_DIR="$PROJECT_ROOT/.tmp/dmg-build"
 DERIVED="$BUILD_DIR/DerivedData"
@@ -33,6 +40,8 @@ rm -rf "$BUILD_DIR"
 mkdir -p "$DERIVED" "$STAGE" "$DIST_DIR"
 
 # --- 1. Compilar Release ------------------------------------------------------
+# El proyecto usa firma automática: dejamos que xcodebuild firme con la cuenta
+# configurada. La firma final estable se garantiza re-firmando la copia (paso 2).
 echo "▶︎ Compilando $APP_NAME (Release)…"
 xcodebuild \
     -project "$PROJECT" \
@@ -41,9 +50,6 @@ xcodebuild \
     -derivedDataPath "$DERIVED" \
     -destination "generic/platform=macOS" \
     clean build \
-    CODE_SIGN_IDENTITY="-" \
-    CODE_SIGNING_REQUIRED=NO \
-    CODE_SIGNING_ALLOWED=NO \
     > "$BUILD_DIR/xcodebuild.log" 2>&1 \
     || { echo "✗ Falló la compilación. Revisa $BUILD_DIR/xcodebuild.log"; tail -20 "$BUILD_DIR/xcodebuild.log"; exit 1; }
 
@@ -55,6 +61,18 @@ echo "  ✓ App compilada: $APP_PATH"
 echo "▶︎ Preparando contenido…"
 cp -R "$APP_PATH" "$STAGE/$APP_NAME.app"
 ln -s /Applications "$STAGE/Applications"
+
+# Re-firmar la copia para garantizar una firma íntegra y estable dentro del DMG.
+if [ -n "$SIGN_IDENTITY" ]; then
+    echo "▶︎ Firmando la app…"
+    codesign --force --deep --options runtime \
+        --sign "$SIGN_IDENTITY" "$STAGE/$APP_NAME.app" \
+        > "$BUILD_DIR/codesign.log" 2>&1 \
+        || { echo "✗ Falló la firma. Revisa $BUILD_DIR/codesign.log"; tail -10 "$BUILD_DIR/codesign.log"; exit 1; }
+    codesign --verify --strict "$STAGE/$APP_NAME.app" \
+        && echo "  ✓ Firma verificada" \
+        || { echo "✗ La firma no verifica"; exit 1; }
+fi
 
 echo "▶︎ Generando fondo…"
 swift "$SCRIPT_DIR/dmg-background.swift" "$BG_PNG"
