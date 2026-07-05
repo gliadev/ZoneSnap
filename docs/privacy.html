@@ -3,84 +3,131 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ZoneSnap — Política de privacidad</title>
+<title>ZoneSnap — Privacy</title>
 <style>
   :root {
-    --bg: #f6f7f9;
+    --bg: #f4f6fa;
     --card: #ffffff;
-    --text: #1c1e21;
-    --muted: #62676d;
+    --text: #14161a;
+    --muted: #5b616b;
     --accent: #3b6ff5;
-    --border: #e4e6eb;
+    --border: #e4e7ec;
+    --shadow: 0 10px 30px rgba(20,30,60,.08);
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #16181c;
-      --card: #1f2228;
-      --text: #e7e9ec;
-      --muted: #9aa0a6;
+      --bg: #0f1115;
+      --card: #191c22;
+      --text: #eceef1;
+      --muted: #98a0ab;
       --accent: #5b86ff;
-      --border: #2c2f36;
+      --border: #262a31;
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
     }
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    background: var(--bg);
+    background:
+      radial-gradient(1200px 600px at 50% -200px, color-mix(in srgb, var(--accent) 18%, transparent), transparent),
+      var(--bg);
     color: var(--text);
-    line-height: 1.65;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 3rem 1.25rem 4rem; }
-  h1 { font-size: 1.8rem; margin: 0 0 .35rem; }
-  .updated { color: var(--muted); font-size: .95rem; margin-bottom: 2rem; }
-  h2 { font-size: 1.2rem; margin: 2rem 0 .5rem; }
+  .wrap { max-width: 680px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.75rem; }
+  .brand { display: inline-flex; align-items: center; gap: .6rem; color: var(--text); font-weight: 700; text-decoration: none; }
+  .app-icon { width: 34px; height: 34px; }
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 3px; box-shadow: var(--shadow); }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600; font-size: .85rem; padding: .35rem .9rem; border-radius: 999px; cursor: pointer; transition: .18s; }
+  .seg button.active { background: var(--accent); color: #fff; }
+  h1 { font-size: 1.9rem; margin: 0 0 .3rem; letter-spacing: -.02em; }
+  .updated { color: var(--muted); font-size: .95rem; margin: 0 0 1.75rem; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.4rem 1.7rem 1.8rem; box-shadow: var(--shadow); }
+  h2 { font-size: 1.15rem; margin: 1.8rem 0 .5rem; }
+  h2:first-of-type { margin-top: .4rem; }
   a { color: var(--accent); }
-  .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 1.25rem 1.75rem 1.75rem;
-  }
-  .back { display: inline-block; margin-bottom: 1.5rem; color: var(--accent); text-decoration: none; }
-  footer { text-align: center; color: var(--muted); font-size: .9rem; margin-top: 2rem; }
+  ul { padding-left: 1.2rem; margin: .5rem 0; }
+  footer { text-align: center; color: var(--muted); font-size: .9rem; margin-top: 2.5rem; }
+  [data-lang][hidden] { display: none !important; }
 </style>
 </head>
-<body>
+<body class="lang-es">
   <div class="wrap">
-    <a class="back" href="index.html">← ZoneSnap</a>
-    <h1>Política de privacidad</h1>
-    <p class="updated">Última actualización: 6 de julio de 2026</p>
+    <div class="top">
+      <a class="brand" href="index.html">
+        <svg class="app-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b86ff"/><stop offset="1" stop-color="#3b6ff5"/></linearGradient></defs>
+          <rect x="2" y="2" width="96" height="96" rx="24" fill="url(#g)"/>
+          <rect x="19" y="27" width="28" height="46" rx="5" fill="#fff"/>
+          <rect x="53" y="27" width="28" height="20" rx="5" fill="#fff"/>
+          <rect x="53" y="51" width="28" height="22" rx="5" fill="#fff"/>
+        </svg>
+        ZoneSnap
+      </a>
+      <div class="seg" role="group" aria-label="Language">
+        <button data-set="es">ES</button>
+        <button data-set="en">EN</button>
+      </div>
+    </div>
+
+    <h1><span data-lang="es">Política de privacidad</span><span data-lang="en">Privacy Policy</span></h1>
+    <p class="updated"><span data-lang="es">Última actualización: 6 de julio de 2026</span><span data-lang="en">Last updated: July 6, 2026</span></p>
 
     <div class="card">
-      <h2>Resumen</h2>
-      <p><strong>ZoneSnap no recoge, almacena ni transmite ningún dato personal.</strong>
-      No hay cuentas, no hay analítica, no hay rastreadores y no hay servidores. La app
-      funciona por completo en tu Mac.</p>
+      <h2><span data-lang="es">Resumen</span><span data-lang="en">Summary</span></h2>
+      <p data-lang="es"><strong>ZoneSnap no recoge, almacena ni transmite ningún dato personal.</strong> No hay cuentas, no hay analítica, no hay rastreadores y no hay servidores. La app funciona por completo en tu Mac.</p>
+      <p data-lang="en"><strong>ZoneSnap does not collect, store or transmit any personal data.</strong> No accounts, no analytics, no trackers, no servers. The app runs entirely on your Mac.</p>
 
-      <h2>Datos que NO recogemos</h2>
-      <ul>
+      <h2><span data-lang="es">Datos que NO recogemos</span><span data-lang="en">Data we do NOT collect</span></h2>
+      <ul data-lang="es">
         <li>No recogemos información personal ni identificadores.</li>
         <li>No usamos analítica ni herramientas de seguimiento de terceros.</li>
         <li>No enviamos datos a ningún servidor. ZoneSnap no realiza conexiones de red.</li>
       </ul>
+      <ul data-lang="en">
+        <li>We collect no personal information or identifiers.</li>
+        <li>We use no analytics or third-party tracking tools.</li>
+        <li>We send no data to any server. ZoneSnap makes no network connections.</li>
+      </ul>
 
-      <h2>Datos que se quedan en tu Mac</h2>
-      <p>Tus configuraciones de zonas y preferencias se guardan localmente en el contenedor
-      de la app dentro de tu Mac. Nunca salen de tu dispositivo.</p>
+      <h2><span data-lang="es">Datos que se quedan en tu Mac</span><span data-lang="en">Data that stays on your Mac</span></h2>
+      <p data-lang="es">Tus configuraciones de zonas y preferencias se guardan localmente en el contenedor de la app dentro de tu Mac. Nunca salen de tu dispositivo.</p>
+      <p data-lang="en">Your zone configurations and preferences are stored locally in the app's container on your Mac. They never leave your device.</p>
 
-      <h2>Permiso de Accesibilidad</h2>
-      <p>ZoneSnap solicita el permiso de <em>Accesibilidad</em> de macOS únicamente para poder
-      mover y redimensionar las ventanas de otras aplicaciones, que es su función principal.
-      Este permiso se usa exclusivamente para gestionar ventanas y no se emplea para leer,
-      recoger ni transmitir ninguna información.</p>
+      <h2><span data-lang="es">Permiso de Accesibilidad</span><span data-lang="en">Accessibility permission</span></h2>
+      <p data-lang="es">ZoneSnap solicita el permiso de <em>Accesibilidad</em> de macOS únicamente para poder mover y redimensionar las ventanas de otras aplicaciones, que es su función principal. Este permiso se usa exclusivamente para gestionar ventanas y no se emplea para leer, recoger ni transmitir ninguna información.</p>
+      <p data-lang="en">ZoneSnap requests the macOS <em>Accessibility</em> permission solely to move and resize other apps' windows, which is its core function. This permission is used exclusively to manage windows and is never used to read, collect or transmit any information.</p>
 
-      <h2>Cambios</h2>
-      <p>Si esta política cambia, se actualizará esta página con la nueva fecha.</p>
+      <h2><span data-lang="es">Cambios</span><span data-lang="en">Changes</span></h2>
+      <p data-lang="es">Si esta política cambia, se actualizará esta página con la nueva fecha.</p>
+      <p data-lang="en">If this policy changes, this page will be updated with the new date.</p>
 
-      <h2>Contacto</h2>
-      <p>Para cualquier duda sobre privacidad: <a href="mailto:gliadev@icloud.com">gliadev@icloud.com</a></p>
+      <h2><span data-lang="es">Contacto</span><span data-lang="en">Contact</span></h2>
+      <p data-lang="es">Para cualquier duda sobre privacidad: <a href="mailto:gliadev@icloud.com">gliadev@icloud.com</a></p>
+      <p data-lang="en">For any privacy questions: <a href="mailto:gliadev@icloud.com">gliadev@icloud.com</a></p>
     </div>
 
     <footer>© 2026 gliadev · ZoneSnap</footer>
   </div>
+
+  <script>
+    (function () {
+      const saved = localStorage.getItem('zonesnap-lang');
+      const lang = saved || ((navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en');
+      function apply(l) {
+        document.documentElement.lang = l;
+        document.body.className = 'lang-' + l;
+        document.querySelectorAll('[data-lang]').forEach(el => { el.hidden = el.dataset.lang !== l; });
+        document.querySelectorAll('.seg button').forEach(b => b.classList.toggle('active', b.dataset.set === l));
+      }
+      document.querySelectorAll('.seg button').forEach(b => {
+        b.addEventListener('click', () => { localStorage.setItem('zonesnap-lang', b.dataset.set); apply(b.dataset.set); });
+      });
+      apply(lang);
+    })();
+  </script>
 </body>
 </html>
