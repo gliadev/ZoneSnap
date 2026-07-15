@@ -35,5 +35,8 @@ struct ZoneCell: View {
         }
         .buttonStyle(.plain)
         .disabled(onSelect == nil)
+        .accessibilityLabel("Zona \(number)")
+        .accessibilityHint(onSelect == nil ? "" : "Toca dos veces para seleccionarla y dividirla")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

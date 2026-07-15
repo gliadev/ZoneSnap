@@ -43,6 +43,21 @@ struct BoundaryHandle: View {
                 DragGesture(coordinateSpace: .named(MonitorPreview.coordinateSpace))
                     .onChanged { value in onMove(localPosition(of: value)) }
             )
+            // Accesibilidad: el separador también es operable sin ratón. VoiceOver y
+            // el teclado lo tratan como control ajustable (arriba/abajo lo desplazan
+            // dentro de su rango), sin necesidad del gesto de arrastre.
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(isVertical ? "Separador vertical entre zonas" : "Separador horizontal entre zonas")
+            .accessibilityHint("Ajusta para redimensionar las zonas colindantes")
+            .accessibilityAdjustableAction { direction in
+                let step = (boundary.extent.upperBound - boundary.extent.lowerBound) * 0.05
+                let target: CGFloat = switch direction {
+                case .increment: boundary.position + step
+                case .decrement: boundary.position - step
+                @unknown default: boundary.position
+                }
+                onMove(min(max(target, boundary.extent.lowerBound), boundary.extent.upperBound))
+            }
     }
 
     private func localPosition(of value: DragGesture.Value) -> CGFloat {
