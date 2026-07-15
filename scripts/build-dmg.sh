@@ -9,9 +9,14 @@
 # Uso:   scripts/build-dmg.sh [version]
 #        version → opcional, p. ej. 1.0.0 (por defecto: la del proyecto o "dev")
 #
-# Firma: usa la identidad de SIGN_IDENTITY (por defecto la de desarrollo de
-# Adolfo). Una firma estable es imprescindible para que el permiso de
-# Accesibilidad persista entre reinstalaciones. Para no firmar: SIGN_IDENTITY=""
+# Firma: usa la identidad de SIGN_IDENTITY (por defecto el Developer ID de
+# Adolfo, imprescindible para distribuir fuera de la Mac App Store). Una firma
+# estable garantiza que el permiso de Accesibilidad persista entre
+# reinstalaciones. Para no firmar: SIGN_IDENTITY=""
+#
+# Notarización: si NOTARY_PROFILE apunta a un perfil válido de notarytool
+# (creado con `xcrun notarytool store-credentials`), el script notariza y grapa
+# el DMG automáticamente. Para saltar la notarización: NOTARY_PROFILE=""
 #
 set -euo pipefail
 
@@ -24,7 +29,13 @@ APP_NAME="ZoneSnap"
 VERSION="${1:-dev}"
 
 # Identidad de firma (override con la variable de entorno SIGN_IDENTITY).
-SIGN_IDENTITY="${SIGN_IDENTITY-Apple Development: Adolfo Gomez (4WM754T5R6)}"
+# Developer ID Application: obligatorio para distribución notarizada.
+# Se usa la HUELLA (SHA-1) de la clave NUEVA para evitar ambigüedad con la
+# clave vieja corrupta, que comparte nombre. Ver `security find-identity -v -p codesigning`.
+SIGN_IDENTITY="${SIGN_IDENTITY-FD4BF1B1B13A20D4B4ADE5FF75658FADC80B554B}"
+
+# Perfil de notarytool (override con NOTARY_PROFILE; vacío = no notarizar).
+NOTARY_PROFILE="${NOTARY_PROFILE-ZoneSnap}"
 
 BUILD_DIR="$PROJECT_ROOT/.tmp/dmg-build"
 DERIVED="$BUILD_DIR/DerivedData"
@@ -64,8 +75,8 @@ ln -s /Applications "$STAGE/Applications"
 
 # Re-firmar la copia para garantizar una firma íntegra y estable dentro del DMG.
 if [ -n "$SIGN_IDENTITY" ]; then
-    echo "▶︎ Firmando la app…"
-    codesign --force --deep --options runtime \
+    echo "▶︎ Firmando la app (Developer ID + hardened runtime + timestamp)…"
+    codesign --force --deep --options runtime --timestamp \
         --sign "$SIGN_IDENTITY" "$STAGE/$APP_NAME.app" \
         > "$BUILD_DIR/codesign.log" 2>&1 \
         || { echo "✗ Falló la firma. Revisa $BUILD_DIR/codesign.log"; tail -10 "$BUILD_DIR/codesign.log"; exit 1; }
@@ -129,6 +140,47 @@ sleep 1
 rm -f "$DMG_PATH"
 hdiutil convert "$TMP_DMG" -format UDZO -imagekey zlib-level=9 -o "$DMG_PATH" > /dev/null
 rm -f "$TMP_DMG"
+
+# Firmar también el DMG con Developer ID. No es obligatorio (la app de dentro ya va
+# firmada y notarizada), pero da al contenedor una firma válida para que `spctl -t open`
+# lo acepte con `source=Notarized Developer ID` en lugar de "no usable signature".
+if [ -n "$SIGN_IDENTITY" ]; then
+    echo "▶︎ Firmando el DMG (Developer ID + timestamp)…"
+    codesign --force --timestamp --sign "$SIGN_IDENTITY" "$DMG_PATH" \
+        && echo "  ✓ DMG firmado" \
+        || { echo "✗ Falló la firma del DMG"; exit 1; }
+fi
+
+# --- 6. Notarizar y grapar ----------------------------------------------------
+# Sin notarización, Gatekeeper bloquea la app en el Mac de cualquier usuario.
+if [ -n "$NOTARY_PROFILE" ]; then
+    echo "▶︎ Notarizando (puede tardar unos minutos)…"
+    if xcrun notarytool submit "$DMG_PATH" \
+        --keychain-profile "$NOTARY_PROFILE" --wait \
+        > "$BUILD_DIR/notarize.log" 2>&1; then
+        echo "  ✓ Notarización aceptada"
+    else
+        echo "✗ Falló la notarización. Revisa $BUILD_DIR/notarize.log"
+        tail -20 "$BUILD_DIR/notarize.log"
+        # Muestra el detalle del rechazo si hay un submission ID.
+        SUBID="$(grep -Eo 'id: [0-9a-f-]{36}' "$BUILD_DIR/notarize.log" | head -1 | awk '{print $2}')"
+        [ -n "$SUBID" ] && xcrun notarytool log "$SUBID" --keychain-profile "$NOTARY_PROFILE"
+        exit 1
+    fi
+
+    echo "▶︎ Grapando el ticket al DMG…"
+    xcrun stapler staple "$DMG_PATH" \
+        && echo "  ✓ Ticket grapado" \
+        || { echo "✗ Falló el grapado"; exit 1; }
+
+    echo "▶︎ Verificando con Gatekeeper…"
+    # Un DMG no se firma con codesign: se notariza y se grapa. Gatekeeper debe evaluarlo
+    # como imagen que se "abre" (-t open) usando la firma primaria del ticket grapado.
+    # `-t install` es para .pkg y da un falso "no usable signature" en DMG.
+    spctl -a -t open --context context:primary-signature -vv "$DMG_PATH" 2>&1 | sed 's/^/    /' || true
+else
+    echo "⚠︎ NOTARY_PROFILE vacío: DMG SIN notarizar (Gatekeeper lo bloqueará en otros Macs)."
+fi
 
 echo ""
 echo "✅ DMG listo: $DMG_PATH"
