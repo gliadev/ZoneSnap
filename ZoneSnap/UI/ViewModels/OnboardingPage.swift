@@ -42,7 +42,7 @@ extension OnboardingPage {
         OnboardingPage(
             id: 0,
             title: "Bienvenido a ZoneSnap",
-            message: "Crea zonas a tu medida en cada monitor y acopla las ventanas a ellas con el ratón o el teclado.",
+            message: "Coloca ventanas en zonas a tu medida con un simple atajo de teclado, sin necesidad de arrastrar ni redimensionar con el ratón. En cada monitor.",
             symbol: "rectangle.split.2x2",
             kind: .info
         ),
@@ -70,7 +70,7 @@ extension OnboardingPage {
         OnboardingPage(
             id: 4,
             title: "Un permiso para empezar",
-            message: "Para mover ventanas de otras apps, macOS pide permiso de Accesibilidad. Concédelo y ya estará todo listo.",
+            message: "ZoneSnap te deja colocar ventanas solo con el teclado —sin arrastres ni ajustes finos de ratón—, algo pensado para quien no puede hacer esos gestos con precisión. Para lograrlo, macOS pide el permiso de Accesibilidad. Concédelo y listo.",
             symbol: "lock.shield",
             kind: .permission
         )
